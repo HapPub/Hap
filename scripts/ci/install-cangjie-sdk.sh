@@ -11,6 +11,7 @@ expected_sha=$2
 install_root=$3
 env_output=$4
 archive="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/cangjie-sdk.tar.gz"
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 case "$expected_sha" in
   *[!0-9a-fA-F]*|'')
@@ -37,26 +38,7 @@ fi
   exit 1
 }
 
-python3 - "$archive" "$install_root" <<'PY'
-import os
-import pathlib
-import sys
-import tarfile
-
-archive = pathlib.Path(sys.argv[1])
-root = pathlib.Path(sys.argv[2]).resolve()
-
-with tarfile.open(archive, "r:gz") as bundle:
-    for member in bundle.getmembers():
-        destination = (root / member.name).resolve()
-        if os.path.commonpath((root, destination)) != str(root):
-            raise SystemExit(f"unsafe SDK archive member: {member.name}")
-        if member.issym() or member.islnk():
-            link = pathlib.PurePosixPath(member.linkname)
-            if link.is_absolute() or ".." in link.parts:
-                raise SystemExit(f"unsafe SDK archive link: {member.name}")
-    bundle.extractall(root)
-PY
+python3 "$script_dir/safe-extract-tar.py" "$archive" "$install_root"
 
 envsetup=$(find "$install_root" -maxdepth 5 -type f -name envsetup.sh -print | head -n 1)
 [[ -n "$envsetup" ]] || {

@@ -19,13 +19,18 @@ for script in \
 do
   bash -n "$script"
 done
-python3 - "$ROOT/scripts/ci/render-release-manifest.py" <<'PY'
+for python_script in \
+  "$ROOT/scripts/ci/render-release-manifest.py" \
+  "$ROOT/scripts/ci/safe-extract-tar.py"
+do
+python3 - "$python_script" <<'PY'
 import pathlib
 import sys
 
 source = pathlib.Path(sys.argv[1]).read_text(encoding="utf-8")
 compile(source, sys.argv[1], "exec")
 PY
+done
 
 for readme in "$ROOT/README.md" "$ROOT/README.zh-CN.md" "$ROOT/README.ru.md"; do
   fence_count=$(grep -c '^```' "$readme")
@@ -44,6 +49,38 @@ fi
 (cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.0 >/dev/null)
 if (cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.1 >/dev/null 2>&1); then
   fail_test "mismatched tag was accepted"
+fi
+
+python3 - "$WORK" <<'PY'
+import io
+import pathlib
+import sys
+import tarfile
+
+root = pathlib.Path(sys.argv[1])
+safe = root / "safe.tar.gz"
+escape = root / "escape.tar.gz"
+
+with tarfile.open(safe, "w:gz") as archive:
+    payload = b"library"
+    file_info = tarfile.TarInfo("sdk/runtime/lib/library.dylib")
+    file_info.size = len(payload)
+    archive.addfile(file_info, io.BytesIO(payload))
+    link_info = tarfile.TarInfo("sdk/third_party/llvm/lib/library.dylib")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = "../../../runtime/lib/library.dylib"
+    archive.addfile(link_info)
+
+with tarfile.open(escape, "w:gz") as archive:
+    link_info = tarfile.TarInfo("sdk/lib/escape")
+    link_info.type = tarfile.SYMTYPE
+    link_info.linkname = "../../../../outside"
+    archive.addfile(link_info)
+PY
+python3 "$ROOT/scripts/ci/safe-extract-tar.py" "$WORK/safe.tar.gz" "$WORK/safe-root"
+[ -L "$WORK/safe-root/sdk/third_party/llvm/lib/library.dylib" ] || fail_test "safe in-root SDK link was not extracted"
+if python3 "$ROOT/scripts/ci/safe-extract-tar.py" "$WORK/escape.tar.gz" "$WORK/escape-root" >/dev/null 2>&1; then
+  fail_test "out-of-root SDK link was accepted"
 fi
 
 mkdir -p "$WORK/dist"
