@@ -1,0 +1,86 @@
+schema: "happub-network-dictionary-v0"
+purpose: "public dictionary contract for HapCLI-compatible package channels, mirrors, adapters, and self-healing plans"
+status: "draft-for-action-generation"
+public_positioning:
+  one_line: "HapCLI provides a compatibility and self-healing layer for Cangjie/Harmony toolchain packages, runtimes, mirrors, and project dependency profiles."
+  blocked_claims:
+    - "HapCLI replaces cjpm"
+    - "Hap.Pub is the package manager for Harmony"
+    - "Hap.Pub is official ecosystem infrastructure"
+dictionary_manifest:
+  required_fields:
+    - manifest_id
+    - schema_version
+    - generated_at
+    - dictionary_version
+    - ttl_seconds
+    - signature_policy
+    - fallback_policy
+    - entries
+entry_families:
+  toolchain_package_channel:
+    required_fields:
+      - channel_id
+      - ecosystem
+      - package_family
+      - version
+      - target
+      - source_url
+      - checksum
+      - checksum_policy
+      - install_shape
+      - receipt_policy
+      - non_promises
+  source_mirror_profile:
+    required_fields:
+      - profile_id
+      - region
+      - source_family
+      - dependencies
+      - fallback_order
+      - network_claim
+      - restore_policy
+  package_manager_adapter:
+    required_fields:
+      - adapter_id
+      - adapter_kind
+      - owned_by_happub
+      - command_surface
+      - allowed_operations
+      - forbidden_operations
+      - dry_run_policy
+      - receipt_policy
+      - sandbox_policy
+  self_healing_plan:
+    required_fields:
+      - plan_id
+      - project_type
+      - detected_problem
+      - proposed_actions
+      - mutation_surfaces
+      - backup_policy
+      - restore_command
+      - verification_steps
+      - human_review_required
+suggested_endpoints:
+  - path: "/manifest.json"
+    family: "dictionary_manifest"
+    method: "GET"
+  - path: "/channels/cangjie-stdx.json"
+    family: "toolchain_package_channel"
+    method: "GET"
+  - path: "/mirrors/source-profiles.json"
+    family: "source_mirror_profile"
+    method: "GET"
+  - path: "/adapters/package-managers.json"
+    family: "package_manager_adapter"
+    method: "GET"
+  - path: "/recipes/self-healing-plans.json"
+    family: "self_healing_plan"
+    method: "GET"
+non_promises:
+  - "not a production API"
+  - "not a package registry"
+  - "not an official package manager"
+  - "not a mirror availability guarantee"
+  - "not a silent mutation channel"

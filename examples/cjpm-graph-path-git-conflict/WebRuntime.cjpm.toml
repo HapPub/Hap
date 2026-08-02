@@ -1,0 +1,8 @@
+[package]
+  name = "web-runtime"
+  version = "0.5.0"
+
+[dependencies]
+  CryptoLib = { path = "../cryptoLib" }
+  crypto_core = { git = "https://gitcode.com/CjKu/CryptoCore.git" }
+  jsonlib = { path = "../JsonLib" }

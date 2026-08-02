@@ -1,0 +1,39 @@
+{
+  "schema": "happub-hapcli-cjpm-profile-inspect-v0",
+  "ok": true,
+  "fixtureId": "local-cloud-cjpm-profile",
+  "input": "cjpm.local.toml",
+  "inferredProfile": "local-dev",
+  "dependencySummary": {
+    "pathDependencies": [
+      {
+        "name": "WebRuntime",
+        "path": "../deps/web-runtime"
+      },
+      {
+        "name": "CryptoContract",
+        "path": "../deps/crypto-contract"
+      }
+    ],
+    "gitDependencies": [
+      {
+        "name": "JsonLib",
+        "git": "https://gitcode.com/example/json-lib-cangjie.git",
+        "branch": "main"
+      }
+    ],
+    "mixedProfile": true
+  },
+  "warnings": [
+    {
+      "code": "local-path-dependency-not-cloud-safe",
+      "message": "local path dependencies should be switched before cloud or review handoff"
+    }
+  ],
+  "nextAllowed": [
+    "switch-cloud",
+    "switch-review",
+    "stdx-doctor",
+    "runtime-doctor"
+  ]
+}

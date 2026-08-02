@@ -1,0 +1,39 @@
+[profiles.local-dev.dependencies]
+WebRuntime = { path = "../deps/web-runtime" }
+CryptoContract = { path = "../deps/crypto-contract" }
+JsonLib = { git = "https://gitcode.com/example/json-lib-cangjie.git", branch = "main" }
+
+[profiles.cloud.dependencies]
+WebRuntime = { git = "https://gitcode.com/example/web-runtime-cangjie.git", branch = "main" }
+CryptoContract = { git = "https://gitcode.com/example/crypto-contract.git", tag = "v0.1.0" }
+JsonLib = { git = "https://gitcode.com/example/json-lib-cangjie.git", branch = "main" }
+
+[profiles.review.dependencies]
+WebRuntime = { git = "https://github.com/example/web-runtime.git", branch = "main" }
+CryptoContract = { git = "https://github.com/example/crypto-contract.git", tag = "v0.1.0" }
+JsonLib = { git = "https://github.com/example/json-lib-cangjie.git", branch = "main" }
+
+[profiles.release.dependencies]
+WebRuntime = { git = "https://github.com/example/web-runtime.git", tag = "v0.1.0" }
+CryptoContract = { git = "https://github.com/example/crypto-contract.git", tag = "v0.1.0" }
+JsonLib = { git = "https://github.com/example/json-lib-cangjie.git", tag = "v0.1.0" }
+
+[mirrors.cn]
+name = "gitcode-example"
+WebRuntime = "https://gitcode.com/example/web-runtime-cangjie.git"
+CryptoContract = "https://gitcode.com/example/crypto-contract.git"
+JsonLib = "https://gitcode.com/example/json-lib-cangjie.git"
+
+[mirrors.global]
+name = "github-example"
+WebRuntime = "https://github.com/example/web-runtime.git"
+CryptoContract = "https://github.com/example/crypto-contract.git"
+JsonLib = "https://github.com/example/json-lib-cangjie.git"
+
+[stdx]
+expected = "stdx_Build/linux_x86_64_cjnative"
+diagnostic = "If this path is absent, HapCLI should report a repair hint instead of silently rewriting cjpm.toml."
+
+[runtime]
+expected_channel = "cangjie-sdk-linux-x86_64-1.1.3"
+policy = "diagnose-only"

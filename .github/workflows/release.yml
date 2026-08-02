@@ -1,0 +1,137 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - id: release
+        name: Validate tag and public surface
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(bash scripts/ci/validate-release.sh "$GITHUB_REF_NAME")"
+          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          sh tests/public-surface.sh
+          sh tests/hapup-security.sh
+          sh tests/release-workflow.sh
+
+  source:
+    needs: validate
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Package source fallback
+        run: bash scripts/ci/package-source.sh "${{ needs.validate.outputs.version }}" dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-source
+          path: dist/*
+          if-no-files-found: error
+
+  native:
+    needs: validate
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux-amd64
+            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-1.1.3.tar.gz&objectKey=6a19349d21f5a8178d6fd22b
+            sdk_sha256: 2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-aarch64-1.1.3.tar.gz&objectKey=6a19350321f5a8178d6fd22c
+            sdk_sha256: 0b0ce42ce2492f654b00029687229188c82751418cb34df7990efd43eaf9c41f
+          - runner: macos-14
+            target: darwin-arm64
+            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-mac-aarch64-1.1.3.tar.gz&objectKey=6a19312721f5a8178d6fd225
+            sdk_sha256: 7eff8d3b9119535cf3d05cb81526c5df391137dce908d744449f4edb99da3199
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Install checksum-pinned Cangjie SDK
+        shell: bash
+        run: |
+          bash scripts/ci/install-cangjie-sdk.sh \
+            '${{ matrix.sdk_url }}' \
+            '${{ matrix.sdk_sha256 }}' \
+            "$RUNNER_TEMP/cangjie-sdk" \
+            "$RUNNER_TEMP/cangjie-env.sh"
+      - name: Build, test, and package native binary
+        shell: bash
+        run: |
+          bash scripts/ci/build-release.sh \
+            '${{ matrix.target }}' \
+            '${{ needs.validate.outputs.version }}' \
+            "$RUNNER_TEMP/cangjie-env.sh" \
+            dist
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: release-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [validate, source, native]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+      - name: Build manifest from verified artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp release/hapup.sh dist/hapup.sh
+          chmod 0755 dist/hapup.sh
+          python3 scripts/ci/render-release-manifest.py \
+            --dist dist \
+            --version '${{ needs.validate.outputs.version }}' \
+            --tag "$GITHUB_REF_NAME" \
+            --repository "$GITHUB_REPOSITORY" \
+            --output dist/manifest.v0.json \
+            --notes-output "$RUNNER_TEMP/release-notes.md"
+          cd dist
+          sha256sum hapup.sh > hapup.sh.sha256
+          sha256sum manifest.v0.json > manifest.v0.json.sha256
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | sort -z \
+            | xargs -0 sha256sum > SHA256SUMS
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
+            gh release edit "$GITHUB_REF_NAME" \
+              --title "HapCLI ${{ needs.validate.outputs.version }}" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          else
+            gh release create "$GITHUB_REF_NAME" dist/* \
+              --verify-tag \
+              --title "HapCLI ${{ needs.validate.outputs.version }}" \
+              --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

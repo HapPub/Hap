@@ -1,0 +1,9 @@
+[package]
+  name = "example_app_core"
+  version = "0.5.22"
+
+[dependencies]
+  web-runtime = { path = "../WebRuntime0500" }
+  CryptoLib = { path = "../cryptoLib" }
+  crypto_core = { path = "../CryptoCore" }
+  jsonlib = { path = "../JsonLib" }

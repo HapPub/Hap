@@ -1,0 +1,6 @@
+[package]
+  name = "CryptoLib"
+  version = "0.3.0"
+
+[dependencies]
+  crypto_core = { git = "https://gitcode.com/CjKu/CryptoCore.git" }

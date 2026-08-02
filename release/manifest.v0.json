@@ -1,0 +1,60 @@
+{
+  "schema": "happub-release-manifest-v0",
+  "ok": true,
+  "channel": "preview",
+  "version": "0.1.0-preview.2",
+  "status": "release-manifest-preview-ready",
+  "baseUrl": "https://cli.hap.pub",
+  "manifestUrl": "https://cli.hap.pub/release/manifest.v0.json",
+  "downloadableAssetCount": 1,
+  "downloadableAssets": [
+    {
+      "id": "hapup-sh",
+      "kind": "bootstrap-shell",
+      "target": "portable-posix-shell",
+      "name": "hapup.sh",
+      "url": "https://cli.hap.pub/install/hapup.sh",
+      "sha256": "b0fbdc2faba124573e5c4c6b930bb4a7205d2122f7c163611a4cc2ae30ef1fcd",
+      "installRole": "thin-bootstrap-companion",
+      "downloadable": true,
+      "executable": true
+    }
+  ],
+  "plannedAssets": [
+    {
+      "id": "hap-linux-amd64",
+      "kind": "flagship-binary",
+      "target": "linux-amd64",
+      "os": "linux",
+      "arch": "amd64",
+      "name": "hap-0.1.0-preview.2-linux-amd64.tar.gz",
+      "status": "planned-not-published",
+      "downloadable": false
+    },
+    {
+      "id": "hap-darwin-arm64",
+      "kind": "flagship-binary",
+      "target": "darwin-arm64",
+      "os": "darwin",
+      "arch": "arm64",
+      "name": "hap-0.1.0-preview.2-darwin-arm64.tar.gz",
+      "status": "planned-not-published",
+      "downloadable": false
+    }
+  ],
+  "manifestInstallStatus": "blocked-no-downloadable-flagship-binary",
+  "manifestInstallCommand": "",
+  "sourceBuildSupported": true,
+  "checksumPolicy": "every downloadable asset must carry sha256 before bootstrap or CI adoption",
+  "nextAllowed": [
+    "publish-reviewed-flagship-assets",
+    "verify-hosted-file-and-checksum-parity",
+    "run-downstream-ci-receipt-proof-after-publication"
+  ],
+  "nonPromises": [
+    "manifest preview does not publish a package registry",
+    "manifest preview does not publish flagship hap binaries",
+    "manifest preview does not provide a working flagship binary install until one planned asset becomes downloadable",
+    "manifest preview does not certify hosted CI adoption"
+  ]
+}

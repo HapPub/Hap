@@ -1,0 +1,30 @@
+name: Feature request
+description: Propose a bounded toolchain compatibility or repair capability.
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the concrete developer workflow that is currently difficult or unreliable.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Prefer fixed adapters, read-only diagnosis, reviewable plans, and explicit receipts.
+    validations:
+      required: true
+  - type: textarea
+    id: boundary
+    attributes:
+      label: Safety and mutation boundary
+      description: State which files, tools, devices, network resources, or external state may change.
+    validations:
+      required: true
+  - type: textarea
+    id: proof
+    attributes:
+      label: Suggested acceptance proof

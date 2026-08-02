@@ -1,0 +1,14 @@
+target/
+.DS_Store
+*.tmp
+*.log
+_helper/
+.cache/
+.vscode/
+.idea/
+.hapData/
+happub.devices.toml
+happub-device-memory.json
+*.hap-backup
+*.receipt.json
+*.backup

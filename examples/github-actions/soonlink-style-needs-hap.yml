@@ -1,0 +1,17 @@
+name: Cangjie CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build
+        run: |
+          hapcli cjpm graph doctor --manifest cjpm.toml
+          cjpm build
+          cjpm test

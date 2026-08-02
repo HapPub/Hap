@@ -1,0 +1,41 @@
+name: Public surface
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Validate public repository surface
+        run: sh tests/public-surface.sh
+      - name: Validate Hapup security fixtures
+        run: sh tests/hapup-security.sh
+      - name: Validate tag release contract
+        run: sh tests/release-workflow.sh
+      - name: Verify release checksum parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          actual="$(sha256sum release/hapup.sh | awk '{print $1}')"
+          python3 - "$actual" <<'PY'
+          import json
+          import pathlib
+          import sys
+
+          actual = sys.argv[1]
+          manifest = json.loads(pathlib.Path("release/manifest.v0.json").read_text())
+          asset = next(item for item in manifest["downloadableAssets"] if item["id"] == "hapup-sh")
+          if asset["sha256"] != actual:
+              raise SystemExit(f"manifest checksum {asset['sha256']} != {actual}")
+
+          source = pathlib.Path("src/release_manifest.cj").read_text()
+          if actual not in source:
+              raise SystemExit("generated release manifest source does not contain the current hapup checksum")
+          PY

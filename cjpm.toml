@@ -1,0 +1,12 @@
+[package]
+  cjc-version = "1.1.0"
+  name = "hapcli"
+  description = "HapCLI flagship open-source core seed"
+  version = "0.1.0"
+  license = "Apache-2.0"
+  output-type = "executable"
+  src-dir = "src"
+  compile-option = "--static --static-std -Woff unused -Woff driver-arg"
+  include = ["src", "README.md", "README.zh-CN.md", "README.ru.md", "LICENSE", "NOTICE", "docs", "contracts", "examples", "release"]
+
+[dependencies]
