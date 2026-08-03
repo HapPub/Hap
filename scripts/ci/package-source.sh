@@ -8,7 +8,7 @@ fi
 
 version=$1
 dist_dir=$2
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+hap_source_script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mkdir -p "$dist_dir"
 archive="$dist_dir/hap-$version-source.tar.gz"
 
@@ -18,6 +18,6 @@ git archive \
   --output="$archive" \
   HEAD
 tar -tzf "$archive" >/dev/null
-bash "$script_dir/write-sha256-sidecar.sh" "$archive"
+bash "$hap_source_script_dir/write-sha256-sidecar.sh" "$archive"
 
 printf 'Source asset ready: %s\n' "$archive"

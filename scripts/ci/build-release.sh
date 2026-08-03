@@ -10,7 +10,6 @@ target=$1
 version=$2
 env_file=$3
 dist_dir=$4
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 case "$target" in
   linux-amd64|linux-arm64|darwin-arm64) ;;
@@ -25,6 +24,7 @@ esac
 set +u
 source "$env_file"
 set -u
+hap_release_script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 if [[ "$target" == darwin-arm64 ]]; then
   export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"
   export COPYFILE_DISABLE=1
@@ -56,7 +56,7 @@ cp LICENSE NOTICE README.md "$stage/$package/"
 
 archive="$dist_dir/$package.tar.gz"
 tar -czf "$archive" -C "$stage" "$package"
-bash "$script_dir/write-sha256-sidecar.sh" "$archive"
+bash "$hap_release_script_dir/write-sha256-sidecar.sh" "$archive"
 
 verify=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/hap-smoke.XXXXXXXX")
 tar -xzf "$archive" -C "$verify"

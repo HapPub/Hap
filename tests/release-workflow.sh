@@ -44,6 +44,9 @@ grep -q 'macos-14' "$ROOT/.github/workflows/release.yml" || fail_test "macOS ARM
 grep -q 'command -v ar' "$ROOT/.github/workflows/release.yml" || fail_test "Linux native build-tool preflight is missing"
 grep -q 'contents: write' "$ROOT/.github/workflows/release.yml" || fail_test "release write permission is missing"
 grep -q 'gh release create' "$ROOT/.github/workflows/release.yml" || fail_test "GitHub release publication is missing"
+grep -q 'hap_release_script_dir' "$ROOT/scripts/ci/build-release.sh" || {
+  fail_test "native release helper path is not isolated from SDK env variables"
+}
 if grep -R -E 'uses:[[:space:]]+actions/(checkout|upload-artifact|download-artifact)@v[0-9]+' "$ROOT/.github/workflows"; then
   fail_test "official release actions must be pinned to commit SHAs"
 fi
