@@ -10,6 +10,7 @@ target=$1
 version=$2
 env_file=$3
 dist_dir=$4
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 
 case "$target" in
   linux-amd64|linux-arm64|darwin-arm64) ;;
@@ -55,11 +56,7 @@ cp LICENSE NOTICE README.md "$stage/$package/"
 
 archive="$dist_dir/$package.tar.gz"
 tar -czf "$archive" -C "$stage" "$package"
-if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$archive" > "$archive.sha256"
-else
-  shasum -a 256 "$archive" > "$archive.sha256"
-fi
+bash "$script_dir/write-sha256-sidecar.sh" "$archive"
 
 verify=$(mktemp -d "${RUNNER_TEMP:-${TMPDIR:-/tmp}}/hap-smoke.XXXXXXXX")
 tar -xzf "$archive" -C "$verify"

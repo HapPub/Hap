@@ -15,7 +15,8 @@ for script in \
   "$ROOT/scripts/ci/install-cangjie-sdk.sh" \
   "$ROOT/scripts/ci/validate-release.sh" \
   "$ROOT/scripts/ci/build-release.sh" \
-  "$ROOT/scripts/ci/package-source.sh"
+  "$ROOT/scripts/ci/package-source.sh" \
+  "$ROOT/scripts/ci/write-sha256-sidecar.sh"
 do
   bash -n "$script"
 done
@@ -51,6 +52,13 @@ fi
 if (cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.1 >/dev/null 2>&1); then
   fail_test "mismatched tag was accepted"
 fi
+
+printf 'checksum fixture\n' > "$WORK/fixture.tar.gz"
+bash "$ROOT/scripts/ci/write-sha256-sidecar.sh" "$WORK/fixture.tar.gz"
+[ "$(awk '{print $2}' "$WORK/fixture.tar.gz.sha256")" = "fixture.tar.gz" ] || {
+  fail_test "checksum sidecar leaked its build path"
+}
+(cd "$WORK" && shasum -a 256 -c fixture.tar.gz.sha256 >/dev/null)
 
 python3 - "$WORK" <<'PY'
 import io

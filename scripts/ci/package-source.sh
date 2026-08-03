@@ -8,6 +8,7 @@ fi
 
 version=$1
 dist_dir=$2
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 mkdir -p "$dist_dir"
 archive="$dist_dir/hap-$version-source.tar.gz"
 
@@ -17,11 +18,6 @@ git archive \
   --output="$archive" \
   HEAD
 tar -tzf "$archive" >/dev/null
-
-if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum "$archive" > "$archive.sha256"
-else
-  shasum -a 256 "$archive" > "$archive.sha256"
-fi
+bash "$script_dir/write-sha256-sidecar.sh" "$archive"
 
 printf 'Source asset ready: %s\n' "$archive"
