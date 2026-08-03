@@ -114,7 +114,16 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
+hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
+
+The two `get` commands emit plans; they do not download or install from this
+surface. `global` routes to the byte-preserving
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror) first, while
+`zh-cn` routes to the original GitCode release first. Both built-in routes use
+the mirror's `manifest.v1.json` as their SHA-256 authority. An explicit
+`--provider-url` stays custom and has no silent fallback.
 
 ### HarmonyOS application development
 
@@ -157,6 +166,12 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | KMP iOS/iPadOS | Build/install/launch implementation available | Apple account, certificate, profile, development team, paired device, and CoreDevice readiness remain host prerequisites. |
 | Android device listing | Read-only ADB discovery available | APK build/install orchestration is not implemented. |
 
+The separate nightly workflow attempts Linux AMD64/ARM64, macOS ARM64/Intel,
+and Windows AMD64 on GitHub-hosted native runners using the mirror manifest.
+Only produced binaries that pass build, tests, packaging, and `hap version`
+are listed as `built-and-smoke-verified`; HarmonyOS remains
+`sdk-mirrored-only` until a real runner exists.
+
 ## Configuration and Safety
 
 HapCLI reads private configuration in this order:
@@ -164,6 +179,14 @@ HapCLI reads private configuration in this order:
 1. `~/.hap/config.toml`
 2. project `./.hapData/config.toml`
 3. project `./happub.toml`, only after a supported project is detected
+
+The Cangjie download route uses `--region`, then `HAP_REGION`, then the
+`downloadRegion` TOML key, then locale/timezone signals, and finally `global`.
+Supported values are `auto`, `global`, and `zh-cn`:
+
+```toml
+downloadRegion = "auto"
+```
 
 Device aliases use the same local-first fallback model. Public examples use
 synthetic identifiers; do not commit real serial numbers, UDIDs, LAN endpoints,
@@ -184,6 +207,7 @@ sh -n release/hapup.sh
 sh tests/hapup-security.sh
 sh tests/public-surface.sh
 sh tests/release-workflow.sh
+sh tests/nightly-workflow.sh
 ```
 
 The GitHub public-surface workflow validates documentation, release metadata,

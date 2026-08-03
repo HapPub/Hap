@@ -10,8 +10,9 @@ sdk_url=$1
 expected_sha=$2
 install_root=$3
 env_output=$4
-archive="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/cangjie-sdk.tar.gz"
+archive="${RUNNER_TEMP:-${TMPDIR:-/tmp}}/cangjie-sdk.archive"
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+python_bin=${PYTHON:-python3}
 
 case "$expected_sha" in
   *[!0-9a-fA-F]*|'')
@@ -38,13 +39,24 @@ fi
   exit 1
 }
 
-python3 "$script_dir/safe-extract-tar.py" "$archive" "$install_root"
+"$python_bin" "$script_dir/safe-extract-sdk.py" "$archive" "$install_root"
 
 envsetup=$(find "$install_root" -maxdepth 5 -type f -name envsetup.sh -print | head -n 1)
-[[ -n "$envsetup" ]] || {
-  printf 'SDK archive did not contain envsetup.sh\n' >&2
+if [[ -n "$envsetup" ]]; then
+  printf 'source %q\n' "$envsetup" > "$env_output"
+  printf 'Cangjie SDK ready: %s\n' "$envsetup"
+  exit 0
+fi
+
+cjpm_exe=$(find "$install_root" -maxdepth 7 -type f -iname cjpm.exe -print | head -n 1)
+[[ -n "$cjpm_exe" ]] || {
+  printf 'SDK archive did not contain envsetup.sh or cjpm.exe\n' >&2
   exit 1
 }
-
-printf 'source %q\n' "$envsetup" > "$env_output"
-printf 'Cangjie SDK ready: %s\n' "$envsetup"
+cangjie_bin=$(dirname "$cjpm_exe")
+cangjie_home=$(dirname "$cangjie_bin")
+{
+  printf 'export CANGJIE_HOME=%q\n' "$cangjie_home"
+  printf 'export PATH=%q:"$PATH"\n' "$cangjie_bin"
+} > "$env_output"
+printf 'Cangjie SDK ready: %s\n' "$cjpm_exe"

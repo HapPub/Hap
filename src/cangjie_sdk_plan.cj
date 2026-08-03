@@ -4,6 +4,9 @@ public class HapCangjieSdkGetOptions {
     public var target: String = "ohos-arm64"
     public var version: String = ""
     public var providerUrl: String = ""
+    public var region: String = "auto"
+    public var regionExplicit: Bool = false
+    public var configPath: String = ""
     public var installRoot: String = ""
     public var sha256: String = ""
     public var allowUnverified: Bool = false
@@ -47,6 +50,28 @@ public func resolveCangjieSdkGetOptions(commandLine: Array<String>, start: Int64
             i += 1
             continue
         }
+        if (current == "--region" && i + 1 < commandLine.size) {
+            options.region = commandLine[i + 1]
+            options.regionExplicit = true
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--region=")) {
+            options.region = substringFrom(current, 9)
+            options.regionExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--config" && i + 1 < commandLine.size) {
+            options.configPath = commandLine[i + 1]
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--config=")) {
+            options.configPath = substringFrom(current, 9)
+            i += 1
+            continue
+        }
         if (current == "--install-root" && i + 1 < commandLine.size) {
             options.installRoot = commandLine[i + 1]
             i += 2
@@ -85,16 +110,21 @@ public func resolveCangjieSdkGetOptions(commandLine: Array<String>, start: Int64
 public func renderCangjieSdkGetPlanJson(options: HapCangjieSdkGetOptions): String {
     let target = canonicalTargetName(options.target)
     let platform = cangjieDownloadPlatformForTarget(target)
+    let route = resolveCangjieSourceRoute(options.region, options.regionExplicit, options.configPath, options.providerUrl)
+    let primaryProviderUrl = cangjieSourceProviderUrl(route, options.version, true)
+    let fallbackProviderUrl = cangjieSourceProviderUrl(route, options.version, false)
+    let manifestUrl = cangjieSourceManifestUrl(route, options.version)
     let downloadName = cangjieSdkDownloadFilename(platform, options.version)
-    let downloadUrl = buildProviderDownloadUrl(options.providerUrl, downloadName)
+    let downloadUrl = buildProviderDownloadUrl(primaryProviderUrl, downloadName)
+    let fallbackDownloadUrl = buildProviderDownloadUrl(fallbackProviderUrl, downloadName)
     let sdkRootHint = cangjieSdkRootHint(options.installRoot, platform, options.version)
     let envSetupHint = sdkRootHint + "/cangjie/envsetup.sh"
     let hasChecksum = options.sha256.size > 0
-    let targetOk = target == "ohos-arm64" || target == "ohos-amd64"
-    let requiredOk = targetOk && platform.size > 0 && options.version.size > 0 && options.providerUrl.size > 0 && options.installRoot.size > 0
-    let verificationOk = hasChecksum || options.allowUnverified
+    let targetOk = platform.size > 0
+    let requiredOk = route.valid && targetOk && options.version.size > 0 && primaryProviderUrl.size > 0 && options.installRoot.size > 0
+    let verificationOk = hasChecksum || manifestUrl.size > 0 || options.allowUnverified
     let ok = requiredOk && verificationOk && !options.executeRequested
-    let status = resolveCangjieSdkGetPlanStatus(targetOk, requiredOk, verificationOk, options.executeRequested)
+    let status = resolveCangjieSdkGetPlanStatus(route.valid, targetOk, requiredOk, verificationOk, options.executeRequested, manifestUrl.size > 0 && !hasChecksum)
 
     let out = StringBuilder()
     out.append("{\n")
@@ -105,13 +135,25 @@ public func renderCangjieSdkGetPlanJson(options: HapCangjieSdkGetOptions): Strin
     out.append("  \"target\": \"" + escapeJson(target) + "\",\n")
     out.append("  \"downloadPlatform\": \"" + escapeJson(platform) + "\",\n")
     out.append("  \"version\": \"" + escapeJson(options.version) + "\",\n")
-    out.append("  \"providerUrl\": \"" + escapeJson(options.providerUrl) + "\",\n")
+    out.append("  \"requestedRegion\": \"" + escapeJson(route.requestedRegion) + "\",\n")
+    out.append("  \"selectedRegion\": \"" + escapeJson(route.selectedRegion) + "\",\n")
+    out.append("  \"regionSelectionSource\": \"" + escapeJson(route.selectionSource) + "\",\n")
+    out.append("  \"sourceRouteStatus\": \"" + escapeJson(route.status) + "\",\n")
+    out.append("  \"sourceConfigPath\": \"" + escapeJson(route.configPath) + "\",\n")
+    out.append("  \"primaryProvider\": \"" + escapeJson(route.primaryProvider) + "\",\n")
+    out.append("  \"fallbackProvider\": \"" + escapeJson(route.fallbackProvider) + "\",\n")
+    out.append("  \"providerUrl\": \"" + escapeJson(primaryProviderUrl) + "\",\n")
+    out.append("  \"fallbackProviderUrl\": \"" + escapeJson(fallbackProviderUrl) + "\",\n")
+    out.append("  \"manifestUrl\": \"" + escapeJson(manifestUrl) + "\",\n")
     out.append("  \"downloadFilename\": \"" + escapeJson(downloadName) + "\",\n")
     out.append("  \"downloadUrl\": \"" + escapeJson(downloadUrl) + "\",\n")
+    out.append("  \"fallbackDownloadUrl\": \"" + escapeJson(fallbackDownloadUrl) + "\",\n")
     out.append("  \"installRoot\": \"" + escapeJson(options.installRoot) + "\",\n")
     out.append("  \"sdkRootHint\": \"" + escapeJson(sdkRootHint) + "\",\n")
     out.append("  \"envSetupHint\": \"" + escapeJson(envSetupHint) + "\",\n")
     out.append("  \"sha256\": \"" + escapeJson(options.sha256) + "\",\n")
+    out.append("  \"checksumAuthority\": \"" + escapeJson(cangjieGetChecksumAuthority(hasChecksum, manifestUrl, options.allowUnverified)) + "\",\n")
+    out.append("  \"manifestChecksumRequiredBeforeDownload\": " + boolJson(!hasChecksum && manifestUrl.size > 0) + ",\n")
     out.append("  \"allowUnverified\": " + boolJson(options.allowUnverified) + ",\n")
     out.append("  \"executeRequested\": " + boolJson(options.executeRequested) + ",\n")
     out.append("  \"status\": \"" + escapeJson(status) + "\",\n")
@@ -137,7 +179,9 @@ public func renderCangjieSdkGetPlanJson(options: HapCangjieSdkGetOptions): Strin
     out.append("    \"plan does not install the SDK\",\n")
     out.append("    \"plan does not mutate zshrc, bashrc, or project manifests\",\n")
     out.append("    \"shared object signing depends on a working binary-sign-tool on HarmonyOS\",\n")
-    out.append("    \"unverified nightly SDK plans are not release-safe without human approval\"\n")
+    out.append("    \"regional route resolution does not perform a network request\",\n")
+    out.append("    \"mirrored SDK presence does not prove Hap or a project runs on that target\",\n")
+    out.append("    \"unverified custom-provider plans are not release-safe without human approval\"\n")
     out.append("  ]\n")
     out.append("}")
     out.toString()
@@ -147,7 +191,8 @@ func cangjieSdkDownloadFilename(platform: String, version: String): String {
     if (platform.size == 0 || version.size == 0) {
         return ""
     }
-    "cangjie-sdk-" + platform + "-" + version + ".tar.gz"
+    let extension = if (platform == "windows-x64") { ".zip" } else { ".tar.gz" }
+    "cangjie-sdk-" + platform + "-" + version + extension
 }
 
 func cangjieSdkRootHint(installRoot: String, platform: String, version: String): String {
@@ -157,7 +202,10 @@ func cangjieSdkRootHint(installRoot: String, platform: String, version: String):
     trimTrailingSlash(installRoot) + "/cangjie-sdk-" + platform + "-" + version
 }
 
-func resolveCangjieSdkGetPlanStatus(targetOk: Bool, requiredOk: Bool, verificationOk: Bool, executeRequested: Bool): String {
+func resolveCangjieSdkGetPlanStatus(routeOk: Bool, targetOk: Bool, requiredOk: Bool, verificationOk: Bool, executeRequested: Bool, manifestRequired: Bool): String {
+    if (!routeOk) {
+        return "invalid-source-route"
+    }
     if (!targetOk) {
         return "unsupported-sdk-target"
     }
@@ -169,6 +217,9 @@ func resolveCangjieSdkGetPlanStatus(targetOk: Bool, requiredOk: Bool, verificati
     }
     if (!verificationOk) {
         return "missing-checksum-or-unverified-approval"
+    }
+    if (manifestRequired) {
+        return "ready-for-manifest-checksum-resolution"
     }
     "ready-for-hapup-review"
 }

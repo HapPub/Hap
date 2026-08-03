@@ -1,0 +1,191 @@
+name: Nightly native matrix
+
+on:
+  workflow_dispatch:
+    inputs:
+      sdk_tag:
+        description: Exact CangjieSDK-Mirror tag; empty selects the newest published mirror release
+        required: false
+        type: string
+  schedule:
+    - cron: "23 19 * * *"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-native-${{ inputs.sdk_tag || 'latest' }}
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    outputs:
+      sdk_tag: ${{ steps.resolve.outputs.sdk_tag }}
+      hap_version: ${{ steps.resolve.outputs.hap_version }}
+      release_tag: ${{ steps.resolve.outputs.release_tag }}
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - id: resolve
+        name: Resolve complete mirror manifest
+        env:
+          REQUESTED_TAG: ${{ inputs.sdk_tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$REQUESTED_TAG"
+          if [[ -z "$tag" ]]; then
+            curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+              'https://api.github.com/repos/HapPub/CangjieSDK-Mirror/releases?per_page=20' \
+              -o "$RUNNER_TEMP/releases.json"
+            tag=$(python3 - "$RUNNER_TEMP/releases.json" <<'PY'
+          import json
+          import sys
+          releases = json.load(open(sys.argv[1], encoding="utf-8"))
+          match = next((item for item in releases if not item.get("draft")), None)
+          if not match:
+              raise SystemExit("no published CangjieSDK-Mirror release")
+          print(match["tag_name"])
+          PY
+            )
+          fi
+          manifest_url="https://github.com/HapPub/CangjieSDK-Mirror/releases/download/$tag/manifest.v1.json"
+          curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+            "$manifest_url" -o "$RUNNER_TEMP/manifest.v1.json"
+          for platform in linux-x64 linux-aarch64 mac-aarch64 mac-x64 windows-x64; do
+            python3 scripts/ci/resolve-nightly-sdk.py \
+              --manifest "$RUNNER_TEMP/manifest.v1.json" --platform "$platform" >/dev/null
+          done
+          hap_version=$(awk -F'"' '/HapCliVersion: String/ { print $2; exit }' src/hapcli.cj)
+          [[ -n "$hap_version" ]]
+          printf 'sdk_tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'hap_version=%s\n' "$hap_version" >> "$GITHUB_OUTPUT"
+          printf 'release_tag=nightly-%s\n' "$tag" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: cangjie-sdk-manifest
+          path: ${{ runner.temp }}/manifest.v1.json
+          if-no-files-found: error
+
+  native:
+    needs: resolve
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: linux-amd64
+            sdk_platform: linux-x64
+            experimental: false
+          - runner: ubuntu-24.04-arm
+            target: linux-arm64
+            sdk_platform: linux-aarch64
+            experimental: false
+          - runner: macos-14
+            target: darwin-arm64
+            sdk_platform: mac-aarch64
+            experimental: false
+          - runner: macos-15-intel
+            target: darwin-amd64
+            sdk_platform: mac-x64
+            experimental: false
+          - runner: windows-2025
+            target: windows-amd64
+            sdk_platform: windows-x64
+            experimental: true
+    runs-on: ${{ matrix.runner }}
+    continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: cangjie-sdk-manifest
+          path: ${{ runner.temp }}/sdk-manifest
+      - id: sdk
+        name: Select checksum-pinned native SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v python3 >/dev/null 2>&1; then
+            python_cmd=python3
+          else
+            python_cmd=python
+          fi
+          printf 'PYTHON=%s\n' "$python_cmd" >> "$GITHUB_ENV"
+          "$python_cmd" scripts/ci/resolve-nightly-sdk.py \
+            --manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            --platform '${{ matrix.sdk_platform }}' \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Install mirrored native SDK
+        shell: bash
+        run: |
+          bash scripts/ci/install-cangjie-sdk.sh \
+            '${{ steps.sdk.outputs.sdk_url }}' \
+            '${{ steps.sdk.outputs.sdk_sha256 }}' \
+            "$RUNNER_TEMP/cangjie-sdk" \
+            "$RUNNER_TEMP/cangjie-env.sh"
+      - name: Build, test, package, and smoke
+        shell: bash
+        run: |
+          bash scripts/ci/build-release.sh \
+            '${{ matrix.target }}' \
+            '${{ needs.resolve.outputs.hap_version }}' \
+            "$RUNNER_TEMP/cangjie-env.sh" \
+            dist
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: nightly-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    needs: [resolve, native]
+    if: ${{ always() && needs.resolve.result == 'success' && needs.native.result == 'success' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          pattern: nightly-*
+          path: dist
+          merge-multiple: true
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: cangjie-sdk-manifest
+          path: ${{ runner.temp }}/sdk-manifest
+      - name: Package source and render nightly receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash scripts/ci/package-source.sh '${{ needs.resolve.outputs.hap_version }}' dist
+          python3 scripts/ci/render-nightly-manifest.py \
+            --dist dist \
+            --sdk-manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            --hap-version '${{ needs.resolve.outputs.hap_version }}' \
+            --release-tag '${{ needs.resolve.outputs.release_tag }}' \
+            --repository "$GITHUB_REPOSITORY" \
+            --output dist/nightly-manifest.v1.json \
+            --notes-output "$RUNNER_TEMP/nightly-notes.md"
+          cd dist
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag='${{ needs.resolve.outputs.release_tag }}'
+          if gh release view "$tag" >/dev/null 2>&1; then
+            gh release upload "$tag" dist/* --clobber
+            gh release edit "$tag" --prerelease \
+              --title "HapCLI with Cangjie ${{ needs.resolve.outputs.sdk_tag }}" \
+              --notes-file "$RUNNER_TEMP/nightly-notes.md"
+          else
+            gh release create "$tag" dist/* --prerelease --target "$GITHUB_SHA" \
+              --title "HapCLI with Cangjie ${{ needs.resolve.outputs.sdk_tag }}" \
+              --notes-file "$RUNNER_TEMP/nightly-notes.md"
+          fi

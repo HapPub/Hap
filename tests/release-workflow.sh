@@ -22,7 +22,10 @@ do
 done
 for python_script in \
   "$ROOT/scripts/ci/render-release-manifest.py" \
-  "$ROOT/scripts/ci/safe-extract-tar.py"
+  "$ROOT/scripts/ci/render-nightly-manifest.py" \
+  "$ROOT/scripts/ci/resolve-nightly-sdk.py" \
+  "$ROOT/scripts/ci/safe-extract-tar.py" \
+  "$ROOT/scripts/ci/safe-extract-sdk.py"
 do
 python3 - "$python_script" <<'PY'
 import pathlib

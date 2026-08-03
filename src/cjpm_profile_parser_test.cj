@@ -223,18 +223,35 @@ public class HapCjpmProfileParserTest {
     }
 
     @TestCase
-    public func cangjieSdkGetPlanRejectsUnsupportedTargetAndExecute(): Unit {
+    public func cangjieSdkGetPlanRejectsUnknownTarget(): Unit {
         let options = HapCangjieSdkGetOptions()
-        options.target = "linux-amd64"
+        options.target = "plan9-riscv64"
         options.version = "1.1.3"
         options.providerUrl = "https://example.invalid/cangjie-sdk"
         options.installRoot = "/tmp/hap-cangjie"
-        options.executeRequested = true
         let json = renderCangjieSdkGetPlanJson(options)
 
         @Assert(containsForTest(json, "\"ok\": false"), true)
-        @Assert(containsForTest(json, "\"target\": \"linux-amd64\""), true)
+        @Assert(containsForTest(json, "\"target\": \"plan9-riscv64\""), true)
         @Assert(containsForTest(json, "\"status\": \"unsupported-sdk-target\""), true)
+        @Assert(containsForTest(json, "\"downloadAllowed\": false"), true)
+    }
+
+    @TestCase
+    public func cangjieSdkGetPlanSupportsLinuxAndRejectsDirectExecute(): Unit {
+        let options = HapCangjieSdkGetOptions()
+        options.target = "linux-amd64"
+        options.version = "1.3.0-alpha.20260803010032"
+        options.installRoot = "/tmp/hap-cangjie"
+        options.region = "global"
+        options.regionExplicit = true
+        options.executeRequested = true
+        let json = renderCangjieSdkGetPlanJson(options)
+
+        @Assert(containsForTest(json, "\"target\": \"linux-amd64\""), true)
+        @Assert(containsForTest(json, "\"downloadPlatform\": \"linux-x64\""), true)
+        @Assert(containsForTest(json, "cangjie-sdk-linux-x64-1.3.0-alpha.20260803010032.tar.gz"), true)
+        @Assert(containsForTest(json, "\"status\": \"execute-not-supported-in-flagship-plan\""), true)
         @Assert(containsForTest(json, "\"executeRequested\": true"), true)
         @Assert(containsForTest(json, "\"downloadAllowed\": false"), true)
     }

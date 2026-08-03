@@ -23,6 +23,24 @@ by the executable.
 | `dictionary refresh` | Refresh a local dictionary cache from an explicit source. |
 | `release manifest` | Emit current preview release metadata without publishing assets. |
 
+## Cangjie Download Routes
+
+`hap get cangjie-sdk` and `hap get cangjie-stdx` resolve a transport and emit a
+non-executing plan. Region precedence is:
+
+```text
+--region > HAP_REGION > downloadRegion in Hap TOML > locale/timezone > global
+```
+
+- `global`: GitHub `HapPub/CangjieSDK-Mirror` first, GitCode original second.
+- `zh-cn`: GitCode original first, GitHub mirror second.
+- `auto`: continue through the precedence list.
+- `--provider-url`: use only that custom provider; no regional fallback.
+
+The built-in routes refer to the mirror `manifest.v1.json` for SHA-256 evidence.
+The plan does not fetch the manifest, download an archive, install a runtime, or
+claim that a mirrored target has passed a Hap build.
+
 ## Output Modes
 
 - Default output is concise and intended for interactive use.

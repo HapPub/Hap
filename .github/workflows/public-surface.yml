@@ -19,6 +19,8 @@ jobs:
         run: sh tests/hapup-security.sh
       - name: Validate tag release contract
         run: sh tests/release-workflow.sh
+      - name: Validate nightly native matrix contract
+        run: sh tests/nightly-workflow.sh
       - name: Verify release checksum parity
         shell: bash
         run: |

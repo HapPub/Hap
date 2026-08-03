@@ -101,7 +101,16 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
+hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
+
+Обе команды `get` только формируют план и не выполняют загрузку или установку.
+Для `global` сначала используется побайтовое зеркало
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а для `zh-cn`
+сначала используется исходный release GitCode. В обоих встроенных маршрутах
+источником SHA-256 служит `manifest.v1.json` зеркала. Явный
+`--provider-url` остается пользовательским и не получает скрытого fallback.
 
 ### Разработка приложений HarmonyOS
 
@@ -143,6 +152,12 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | KMP iOS/iPadOS | Реализованы сборка, установка и запуск | Учетная запись Apple, сертификат, профиль, команда разработки, сопряженное устройство и готовность CoreDevice остаются требованиями хоста. |
 | Список Android-устройств | Доступно определение ADB только для чтения | Автоматизация сборки и установки APK пока не реализована. |
 
+Отдельный nightly workflow запускает Linux AMD64/ARM64, macOS ARM64/Intel и
+Windows AMD64 на нативных GitHub-hosted runner с SDK из manifest зеркала.
+Статус `built-and-smoke-verified` получают только артефакты, прошедшие сборку,
+тесты, упаковку и `hap version`. HarmonyOS остается `sdk-mirrored-only`, пока
+нет реального runner.
+
 ## Настройка и безопасность
 
 HapCLI читает приватную конфигурацию в следующем порядке:
@@ -150,6 +165,14 @@ HapCLI читает приватную конфигурацию в следую�
 1. `~/.hap/config.toml`
 2. `./.hapData/config.toml` внутри проекта
 3. `./happub.toml` внутри проекта, только после определения поддерживаемого типа проекта
+
+Маршрут загрузки Cangjie выбирается в порядке `--region`, `HAP_REGION`, ключ
+`downloadRegion` в TOML, сигналы locale/timezone и затем `global`. Допустимые
+значения: `auto`, `global` и `zh-cn`:
+
+```toml
+downloadRegion = "auto"
+```
 
 Псевдонимы устройств используют ту же локальную схему резервных путей. В публичных примерах применяются только синтетические идентификаторы. Не добавляйте в репозиторий реальные серийные номера, UDID, адреса локальной сети, токены, отчеты или файлы памяти устройств.
 
@@ -165,6 +188,7 @@ sh -n release/hapup.sh
 sh tests/hapup-security.sh
 sh tests/public-surface.sh
 sh tests/release-workflow.sh
+sh tests/nightly-workflow.sh
 ```
 
 Публичный workflow GitHub проверяет документацию, метаданные релиза, синтаксис shell, контрольные суммы и сценарии безопасности установщика. Тег `v*`, совпадающий с версией пакета, загружает официальный Cangjie SDK с закрепленной checksum; публикуются только бинарные файлы, прошедшие нативную сборку, тесты и проверку версии.

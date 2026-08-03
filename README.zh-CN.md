@@ -99,7 +99,14 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
+hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
+
+两个 `get` 命令只输出方案，不在这个入口直接下载或安装。`global` 优先使用按原字节搬运的
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn`
+优先使用 GitCode 原始 release；两个内置渠道都以镜像的 `manifest.v1.json` 作为
+SHA-256 依据。显式传入 `--provider-url` 时保持自定义渠道，不静默回退。
 
 ### HarmonyOS 应用开发
 
@@ -141,6 +148,11 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | KMP iOS/iPadOS | 已实现构建、安装和启动 | Apple 账号、证书、描述文件、开发团队、已配对设备和 CoreDevice 状态仍由主机提供。 |
 | Android 设备列表 | 支持只读 ADB 识别 | 尚未实现 APK 构建和安装编排。 |
 
+独立 nightly 工作流会使用 GitHub 原生 Runner 和镜像 manifest，尝试构建 Linux
+AMD64/ARM64、macOS ARM64/Intel 与 Windows AMD64。只有真正通过构建、测试、打包和
+`hap version` 自检的产物才标记为 `built-and-smoke-verified`；在没有真实 Runner
+前，HarmonyOS 只标记为 `sdk-mirrored-only`。
+
 ## 配置与安全
 
 HapCLI 按以下顺序读取私有配置：
@@ -148,6 +160,14 @@ HapCLI 按以下顺序读取私有配置：
 1. `~/.hap/config.toml`
 2. 项目内 `./.hapData/config.toml`
 3. 仅在识别出受支持项目后读取项目内 `./happub.toml`
+
+仓颉下载渠道依次读取 `--region`、`HAP_REGION`、TOML 的
+`downloadRegion`、locale/timezone 信号，最后回退到 `global`。可选值为
+`auto`、`global`、`zh-cn`：
+
+```toml
+downloadRegion = "auto"
+```
 
 设备别名使用同样的本地优先回退方式。公开示例只使用合成标识；请勿提交真实设备序列号、UDID、局域网地址、令牌、回执或设备记忆文件。
 
@@ -163,6 +183,7 @@ sh -n release/hapup.sh
 sh tests/hapup-security.sh
 sh tests/public-surface.sh
 sh tests/release-workflow.sh
+sh tests/nightly-workflow.sh
 ```
 
 GitHub 的公开面工作流会检查文档、发布元数据、Shell 语法、checksum 和安装器安全样例。与包版本一致的 `v*` 标签会下载 checksum 固定的仓颉官方 SDK；只有通过原生构建、测试和版本自检的二进制才会发布。

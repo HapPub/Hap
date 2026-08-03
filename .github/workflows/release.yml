@@ -29,6 +29,7 @@ jobs:
           sh tests/public-surface.sh
           sh tests/hapup-security.sh
           sh tests/release-workflow.sh
+          sh tests/nightly-workflow.sh
 
   source:
     needs: validate

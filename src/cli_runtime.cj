@@ -458,7 +458,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "get") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> --provider-url=<url> --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
             return 2
         }
         let subject = commandLine[2]
@@ -725,8 +725,9 @@ public func renderHapCliHelp(): String {
     "  env apply --rc <path> --receipt <path>            Patch exact rc path after review, with backup and receipt\n" +
     "  doctor stdx --project <path> --target <target>    Diagnose stdx path shape without installing anything\n" +
     "  doctor runtime --project <path> --target <target> Diagnose Cangjie runtime path shape without installing anything\n" +
-    "  get cangjie-stdx --target=<target> --version=<v>  Emit a plan-only stdx acquisition contract\n" +
-    "  get cangjie-sdk --target=ohos-arm64 --version=<v> Emit a plan-only HarmonyOS SDK install/repair contract\n" +
+    "  get cangjie-stdx --target=<target> --version=<v>  Route GitHub/GitCode and emit a checksum-gated stdx plan\n" +
+    "  get cangjie-sdk --target=<target> --version=<v>   Route GitHub/GitCode and emit an SDK install/repair plan\n" +
+    "       [--region auto|global|zh-cn]                 CLI > HAP_REGION > Hap TOML > locale/timezone > global\n" +
     "  fetch reviewed-recipe --recipe-output=<path>      Emit or write a reviewed bash fetch/deploy recipe without executing it\n" +
     "  handoff runtime --target=<target> --version=<v>   Emit a runtime-only handoff envelope for HapShell\n" +
     "  dictionary refresh --cache=<path> --source=<src>  Refresh local dictionary cache; proxy env is opt-in\n" +
