@@ -45,7 +45,16 @@ run_logged_phase() {
   status=${PIPESTATUS[0]}
   set -e
   if [[ $status -ne 0 ]]; then
-    detail=$(tail -n 4 "$log" | tr '\r\n' '  ' | cut -c1-800)
+    if [[ $phase == test ]]; then
+      detail=$(grep -E '\[[[:space:]]*(FAILED|ERROR)[[:space:]]*\][[:space:]]+CASE:|^(An exception|Error:|[[:space:]]+at )' "$log" \
+        | head -n 12 | tr '\r\n' '  ' | cut -c1-1600)
+    else
+      detail=$(grep -E '(^|[[:space:]])(error:|undefined symbol:|ld[^:]*: error:)' "$log" \
+        | tail -n 8 | tr '\r\n' '  ' | cut -c1-1600)
+    fi
+    if [[ -z $detail ]]; then
+      detail=$(tail -n 6 "$log" | tr '\r\n' '  ' | cut -c1-1600)
+    fi
     printf 'Hap release build failed during %s (exit %s): %s\n' \
       "$phase" "$status" "$detail" >&2
     if [[ ${GITHUB_ACTIONS:-} == true ]]; then
