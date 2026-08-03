@@ -46,8 +46,8 @@ run_logged_phase() {
   set -e
   if [[ $status -ne 0 ]]; then
     if [[ $phase == test ]]; then
-      detail=$(grep -E '\[[[:space:]]*(FAILED|ERROR)[[:space:]]*\][[:space:]]+CASE:|^(An exception|Error:|[[:space:]]+at )' "$log" \
-        | head -n 12 | tr '\r\n' '  ' | cut -c1-1600)
+      detail=$(grep -E '\[[[:space:]]*(FAILED|ERROR)[[:space:]]*\][[:space:]]+CASE:' "$log" \
+        | tr '\r\n' '  ' | cut -c1-6000)
     else
       detail=$(grep -E '(^|[[:space:]])(error:|undefined symbol:|ld[^:]*: error:)' "$log" \
         | tail -n 8 | tr '\r\n' '  ' | cut -c1-1600)
