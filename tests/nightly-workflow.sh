@@ -105,5 +105,8 @@ grep -q 'macos-15-intel' "$workflow" || fail_test "macOS Intel hosted runner is 
 grep -q 'windows-2025' "$workflow" || fail_test "Windows AMD64 hosted runner is missing"
 grep -q 'continue-on-error:.*matrix.experimental' "$workflow" || fail_test "experimental target boundary is missing"
 grep -q 'sdk-mirrored-only' "$ROOT/scripts/ci/render-nightly-manifest.py" || fail_test "mirror-only status is missing"
+grep -q 'cygpath -u' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "Windows runner path normalization is missing"
+grep -q 'Cangjie SDK install failed::phase=' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "SDK install phase annotation is missing"
+grep -q 'hashlib.sha256' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "portable SDK checksum implementation is missing"
 
 printf '%s\n' "nightly workflow tests passed"
