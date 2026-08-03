@@ -108,5 +108,8 @@ grep -q 'sdk-mirrored-only' "$ROOT/scripts/ci/render-nightly-manifest.py" || fai
 grep -q 'cygpath -u' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "Windows runner path normalization is missing"
 grep -q 'Cangjie SDK install failed::phase=' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "SDK install phase annotation is missing"
 grep -q 'hashlib.sha256' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "portable SDK checksum implementation is missing"
+grep -q 'Hap release build failed::phase=' "$ROOT/scripts/ci/build-release.sh" || fail_test "release build phase annotation is missing"
+grep -q 'run_logged_phase build cjpm build' "$ROOT/scripts/ci/build-release.sh" || fail_test "CJPM build phase capture is missing"
+grep -q 'env_file=$(cygpath -u' "$ROOT/scripts/ci/build-release.sh" || fail_test "Windows environment path normalization is missing"
 
 printf '%s\n' "nightly workflow tests passed"
