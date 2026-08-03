@@ -2,13 +2,20 @@ package hapcli
 
 import std.env.{getStdIn, getStdOut}
 
+@When[os != "Windows"]
 private const hapDeviceTermiosWordCount: Int64 = 64
+@When[os != "Windows"]
 private const hapDeviceApplyFlush: Int32 = 2
 
+@When[os != "Windows"]
 foreign func tcgetattr(fd: Int32, state: CPointer<Unit>): Int32
+@When[os != "Windows"]
 foreign func cfmakeraw(state: CPointer<Unit>): Unit
+@When[os != "Windows"]
 foreign func tcsetattr(fd: Int32, action: Int32, state: CPointer<Unit>): Int32
+@When[os != "Windows"]
 foreign func read(fd: Int32, buffer: CPointer<UInt8>, count: UIntNative): IntNative
+@When[os != "Windows"]
 foreign func isatty(fd: Int32): Int32
 
 class HapDeviceTuiAction {
@@ -18,6 +25,7 @@ class HapDeviceTuiAction {
     init() {}
 }
 
+@When[os != "Windows"]
 class HapDeviceRawTerminal {
     let originalState: CPointer<UInt64>
     var closed: Bool = false
@@ -89,6 +97,7 @@ class HapDeviceRawTerminal {
     }
 }
 
+@When[os != "Windows"]
 public func runHapDeviceSetInteractive(options: HapDeviceOptions): String {
     if (unsafe { isatty(0) } == 0 || unsafe { isatty(1) } == 0) {
         return "Hap device failed\nStatus: interactive-terminal-unavailable\nTry: hap device set --alias <name> --platform <harmonyos|android|ios> --target <id>\n"
@@ -202,6 +211,14 @@ public func runHapDeviceSetInteractive(options: HapDeviceOptions): String {
     ""
 }
 
+@When[os == "Windows"]
+public func runHapDeviceSetInteractive(options: HapDeviceOptions): String {
+    "Hap device failed\n" +
+    "Status: interactive-terminal-unavailable-on-windows\n" +
+    "Try: hap device set --alias <name> --platform <harmonyos|android|ios> --target <id>\n"
+}
+
+@When[os != "Windows"]
 func runHapDeviceTuiScreen(snapshot: HapDeviceSnapshot, initial: Int64, message: String): HapDeviceTuiAction {
     var selected = initial
     let terminal = HapDeviceRawTerminal.open()
