@@ -84,8 +84,9 @@ public func renderAppliedCjpmProfileText(cjpmText: String, profilesText: String,
     let out = StringBuilder()
     var inDependencies = false
     var inProfile = false
+    let normalizedCjpmText = cjpmText.replace("\r\n", "\n").replace("\r", "\n")
 
-    for (line in cjpmText.split("\n")) {
+    for (line in normalizedCjpmText.split("\n")) {
         let trimmed = trimAsciiText(line)
         if (inDependencies) {
             if (!startsWithText(trimmed, "[")) {

@@ -691,7 +691,7 @@ func recordToolchainAnswer(
             repair.configSuggestions.add("happub.toml: " + configKey + " = \"" + answer + "\"")
             repair.envSuggestions.add("export " + envKey + "=\"" + answer + "\"")
         } else if (family == "cangjie") {
-            repair.envSuggestions.add("export PATH=\"" + parentPath(answer) + ":$PATH\"")
+            repair.envSuggestions.add(cangjiePathRepairSuggestion(parentPath(answer)))
         }
     }
     valid
@@ -960,19 +960,38 @@ func isProgramResolvable(program: String): Bool {
     if (program.size == 0) {
         return false
     }
-    if (containsText(program, "/")) {
-        return exists(program)
+    if (containsText(program, "/") || containsText(program, "\\")) {
+        return executableCandidateExists(program)
     }
     match (getVariable("PATH")) {
         case Some(pathText) =>
-            for (dir in pathText.split(":")) {
-                if (dir.size > 0 && exists(trimTrailingSlash(dir) + "/" + program)) {
+            let separator = if (containsText(pathText, ";")) { ";" } else { ":" }
+            for (dir in pathText.split(separator)) {
+                if (dir.size > 0 && executableCandidateExists(trimTrailingSlash(dir) + "/" + program)) {
                     return true
                 }
             }
         case None => ()
     }
     false
+}
+
+func executableCandidateExists(program: String): Bool {
+    exists(program) ||
+    exists(program + ".exe") ||
+    exists(program + ".cmd") ||
+    exists(program + ".bat") ||
+    exists(program + ".com")
+}
+
+@When[os != "Windows"]
+func cangjiePathRepairSuggestion(directory: String): String {
+    "export PATH=\"" + directory + ":$PATH\""
+}
+
+@When[os == "Windows"]
+func cangjiePathRepairSuggestion(directory: String): String {
+    "$env:PATH = \"" + directory + ";$env:PATH\""
 }
 
 class HapHarmonyAdapterConfig {

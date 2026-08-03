@@ -583,7 +583,7 @@ func findKmpIosAppArtifact(directory: String): String {
     try {
         let entries = Directory.readFrom(directory)
         for (entry in entries) {
-            let path = entry.path.toString()
+            let path = entry.path.toString().replace("\\", "/")
             if (entry.isDirectory() && endsWithText(basenameText(path), ".app")) {
                 if (selected.size > 0 && selected != path) {
                     return ""

@@ -258,7 +258,9 @@ func appendDoctorNext(out: StringBuilder, subject: String): Unit {
 
 func parentPath(path: String): String {
     let trimmed = trimTrailingSlash(path)
-    let slash = lastIndexOfText(trimmed, "/")
+    let forwardSlash = lastIndexOfText(trimmed, "/")
+    let backwardSlash = lastIndexOfText(trimmed, "\\")
+    let slash = if (forwardSlash > backwardSlash) { forwardSlash } else { backwardSlash }
     if (slash <= 0) {
         return ""
     }
@@ -278,7 +280,7 @@ func joinPath(root: String, suffix: String): String {
 
 func trimTrailingSlash(path: String): String {
     var out = path
-    while (out.size > 1 && out.endsWith("/")) {
+    while (out.size > 1 && (out.endsWith("/") || out.endsWith("\\"))) {
         out = substringTo(out, Int64(out.size - 1))
     }
     out

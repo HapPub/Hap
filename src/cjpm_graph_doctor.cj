@@ -919,7 +919,7 @@ func discoverGraphManifests(
     try {
         let entries = Directory.readFrom(root)
         for (entry in entries) {
-            let path = entry.path.toString()
+            let path = portableGraphPathText(entry.path.toString())
             let name = basenameText(path)
             if (entry.isDirectory()) {
                 if (shouldSkipDiscoveryDirectory(name, includeHidden)) {
@@ -1337,7 +1337,8 @@ func endsWithText(text: String, suffix: String): Bool {
 }
 
 func basenameText(path: String): String {
-    let runes = path.toRuneArray()
+    let portable = portableGraphPathText(path)
+    let runes = portable.toRuneArray()
     var last: Int64 = -1
     var i: Int64 = 0
     while (i < runes.size) {
@@ -1347,13 +1348,13 @@ func basenameText(path: String): String {
         i += 1
     }
     if (last < 0 || last + 1 >= runes.size) {
-        return path
+        return portable
     }
-    substringFrom(path, last + 1)
+    substringFrom(portable, last + 1)
 }
 
 func parentPathText(path: String): String {
-    let trimmed = trimTrailingSlashText(path)
+    let trimmed = trimTrailingSlashText(portableGraphPathText(path))
     let runes = trimmed.toRuneArray()
     var last: Int64 = -1
     var i: Int64 = 0
@@ -1370,11 +1371,15 @@ func parentPathText(path: String): String {
 }
 
 func trimTrailingSlashText(path: String): String {
-    var out = path
+    var out = portableGraphPathText(path)
     while (out.size > 1 && endsWithText(out, "/")) {
         out = substringTo(out, Int64(out.size - 1))
     }
     out
+}
+
+func portableGraphPathText(path: String): String {
+    path.replace("\\", "/")
 }
 
 func leadingWhitespace(text: String): String {

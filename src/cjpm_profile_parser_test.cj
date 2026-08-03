@@ -1,6 +1,7 @@
 package hapcli
 
 import std.collection.ArrayList
+import std.env.getVariable
 import std.fs.{Directory, File, exists}
 import std.process.executeWithOutput
 import std.unittest.*
@@ -1537,7 +1538,7 @@ public class HapCjpmProfileParserTest {
     @TestCase
     public func graphManifestListExportWritesReviewedArtifact(): Unit {
         let root = prepareManifestDiscoveryFixtureForTest()
-        let output = "/tmp/hapcli-manifest-list-reviewed.json"
+        let output = testTempPathForTest("hapcli-manifest-list-reviewed.json")
         let args = [
             "hapcli",
             "cjpm",
@@ -1566,7 +1567,7 @@ public class HapCjpmProfileParserTest {
     @TestCase
     public func graphManifestListReadbackSelectsPackageAndEmitsCommands(): Unit {
         let root = prepareManifestDiscoveryFixtureForTest()
-        let output = "/tmp/hapcli-manifest-list-readback-reviewed.json"
+        let output = testTempPathForTest("hapcli-manifest-list-readback-reviewed.json")
         let exportArgs = [
             "hapcli",
             "cjpm",
@@ -2299,8 +2300,8 @@ public class HapCjpmProfileParserTest {
 
     @TestCase
     public func projectActionToolchainAnswerValidatesCangjiePathWithoutPrompt(): Unit {
-        let root = "/tmp/hapcli-tool-answer-cangjie-toolchain-answer-test"
-        let fakeCjpm = "/tmp/hapcli-tool-answer-fake-cjpm"
+        let root = testTempPathForTest("hapcli-tool-answer-cangjie-toolchain-answer-test")
+        let fakeCjpm = testTempPathForTest("hapcli-tool-answer-fake-cjpm")
         createDirForTest(root)
         File.writeTo(root + "/cjpm.toml", "[package]\nname = \"demo\"\n".toArray())
         File.writeTo(fakeCjpm, "#!/bin/sh\n".toArray())
@@ -2321,7 +2322,7 @@ public class HapCjpmProfileParserTest {
         @Assert(containsForTest(json, "\"interactiveToolchainRequested\": true"), true)
         @Assert(containsForTest(json, "\"interactiveRepairStatus\": \"valid-answers-accepted\""), true)
         @Assert(containsForTest(json, "cjpm=" + fakeCjpm + " valid=true"), true)
-        @Assert(containsForTest(json, "export PATH=\\\"/tmp:$PATH\\\""), true)
+        @Assert(containsForTest(json, escapeJson(cangjiePathRepairSuggestion(parentPath(fakeCjpm)))), true)
         @Assert(containsForTest(json, "\"fixedCommandTemplates\": [\"cjpm build\"]"), true)
     }
 
@@ -2594,10 +2595,10 @@ public class HapCjpmProfileParserTest {
 
     @TestCase
     public func kmpIosOldArtifactDiscoveryRequiresOneAppBundle(): Unit {
-        let singleOutput = "/tmp/hapcli-kmp-ios-old-artifact-single/Debug-iphoneos"
+        let singleOutput = testTempPathForTest("hapcli-kmp-ios-old-artifact-single/Debug-iphoneos")
         createDirForTest(singleOutput + "/Explorer.app")
         @Assert(findKmpIosAppArtifact(singleOutput), singleOutput + "/Explorer.app")
-        let ambiguousOutput = "/tmp/hapcli-kmp-ios-old-artifact-ambiguous/Debug-iphoneos"
+        let ambiguousOutput = testTempPathForTest("hapcli-kmp-ios-old-artifact-ambiguous/Debug-iphoneos")
         createDirForTest(ambiguousOutput + "/Explorer.app")
         createDirForTest(ambiguousOutput + "/Second.app")
         @Assert(findKmpIosAppArtifact(ambiguousOutput), "")
@@ -2847,6 +2848,11 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(2))
     }
 
+}
+
+@When[os != "Windows"]
+@Test
+public class HapHarmonyReviewedBuildPosixFixtureTest {
     @TestCase
     public func harmonyReviewedExecutionRunsFixedBuildCommandAndWritesReceipt(): Unit {
         let root = "/tmp/hapcli-reviewed-exec-reviewed-exec-build-test"
@@ -2897,6 +2903,10 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(0))
     }
 
+}
+
+@Test
+public class HapCjpmProfileParserContinuationOneTest {
     @TestCase
     public func harmonyReviewedDevRejectsPlaceholderLaunchConfig(): Unit {
         let root = "/tmp/hapcli-reviewed-exec-reviewed-exec-dev-placeholder-test"
@@ -2934,6 +2944,11 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(2))
     }
 
+}
+
+@When[os != "Windows"]
+@Test
+public class HapHarmonyLocalDevPosixFixtureTest {
     @TestCase
     public func harmonyLocalDevAutoRunsBuildInstallLaunchAndPidofWithoutReviewToken(): Unit {
         let root = "/tmp/hapcli-local-dev-local-dev-auto-test"
@@ -3578,6 +3593,10 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(1))
     }
 
+}
+
+@Test
+public class HapCjpmProfileParserContinuationTwoTest {
     @TestCase
     public func harmonyDeviceMemoryWritePreservesTrustedEndpointHistory(): Unit {
         let root = "/tmp/hapcli-device-history-device-memory-history-write-test"
@@ -3622,6 +3641,11 @@ public class HapCjpmProfileParserTest {
         @Assert(endpoints.size, Int64(0))
     }
 
+}
+
+@When[os != "Windows"]
+@Test
+public class HapHarmonyWirelessPosixFixtureTest {
     @TestCase
     public func harmonyReviewedWirelessExecutionKeepsTrustedReconnectFailureHard(): Unit {
         let root = "/tmp/hapcli-stale-wireless-reviewed-stale-wireless-hard-fail-test"
@@ -3767,6 +3791,10 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(1))
     }
 
+}
+
+@Test
+public class HapCjpmProfileParserContinuationThreeTest {
     @TestCase
     public func harmonyExecutionHumanSummaryHidesRawJsonByDefault(): Unit {
         let json = (
@@ -4120,6 +4148,11 @@ public class HapCjpmProfileParserTest {
         @Assert(containsForTest(statusJson, "run hap dev to reconnect 192.168.0.124:5555"), true)
     }
 
+}
+
+@When[os != "Windows"]
+@Test
+public class HapHarmonyStatusPosixFixtureTest {
     @TestCase
     public func harmonyDeviceStatusCheckHdcTreatsEmptyTargetsAsNeedsUsb(): Unit {
         let hdc = "/tmp/hapcli-device-status-empty-targets-hdc"
@@ -4232,6 +4265,10 @@ public class HapCjpmProfileParserTest {
         @Assert(projectActionExecutionExitCodeFromJson(json), Int64(0))
     }
 
+}
+
+@Test
+public class HapCjpmProfileParserContinuationFourTest {
     @TestCase
     public func harmonyReviewedWirelessExecutionRejectsStaleDeviceMemoryBeforeCommands(): Unit {
         let root = "/tmp/hapcli-reviewed-wireless-reviewed-dev-stale-memory-test"
@@ -4497,6 +4534,11 @@ public class HapCjpmProfileParserTest {
         @Assert(containsForTest(json, "\"executionActionTaken\": false"), true)
     }
 
+}
+
+@When[os != "Windows"]
+@Test
+public class HapHarmonyTimeoutPosixFixtureTest {
     @TestCase
     public func boundsDeviceProbeTimeoutAndOptionParsing(): Unit {
         let options = resolveHapDeviceOptions("list", [
@@ -4584,7 +4626,7 @@ public class HapCjpmProfileParserTest {
 }
 
 func readFixture(path: String): String {
-    String.fromUtf8(File.readFrom(path))
+    String.fromUtf8(File.readFrom(path)).replace("\r\n", "\n").replace("\r", "\n")
 }
 
 func createDirForTest(path: String): Unit {
@@ -4599,7 +4641,7 @@ func writeExecutableForTest(path: String, body: String): Unit {
 }
 
 func prepareManifestDiscoveryFixtureForTest(): String {
-    let root = "/tmp/hapcli-public-discover-fixture"
+    let root = testTempPathForTest("hapcli-public-discover-fixture")
     createDirForTest(root + "/AppCore")
     createDirForTest(root + "/deps/WebRuntime")
     createDirForTest(root + "/target/ignored")
@@ -4607,6 +4649,14 @@ func prepareManifestDiscoveryFixtureForTest(): String {
     File.writeTo(root + "/deps/WebRuntime/WebRuntime.cjpm.toml", "[package]\nname = \"web-runtime\"\n".toArray())
     File.writeTo(root + "/target/ignored/cjpm.toml", "[package]\nname = \"ignored\"\n".toArray())
     root
+}
+
+func testTempPathForTest(name: String): String {
+    let root = match (getVariable("RUNNER_TEMP")) {
+        case Some(value) => if (value.size > 0) { value } else { "/tmp" }
+        case None => "/tmp"
+    }
+    trimTrailingSlash(root.replace("\\", "/")) + "/" + name
 }
 
 func containsForTest(text: String, needle: String): Bool {

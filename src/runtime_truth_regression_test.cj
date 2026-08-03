@@ -134,7 +134,7 @@ public class HapRuntimeTruthRegressionTest {
 
     @TestCase
     public func graphNormalizePreservesPipeCharactersInTypedChange(): Unit {
-        let root = "/tmp/hapcli-runtime-truth-graph|fixture"
+        let root = testTempPathForTest("hapcli-runtime-truth-graph-pipe-fixture")
         if (!exists(root)) {
             Directory.create(root, recursive: true)
         }
