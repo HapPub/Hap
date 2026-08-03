@@ -84,10 +84,14 @@ func inspectCjpmEnvironmentValuesInternal(
     plan.candidatePath = resolveStableOpenSslLib(configuredOpenSslLib)
     plan.candidateVerified = verifyOpenSslLibDirectory(plan.candidatePath)
     let opensslRepairAvailable = plan.candidateVerified && plan.stalePathDetected
-    let sdkRootRelevant = inspectSdkRoot && (plan.sdkRootCandidate.size > 0 || plan.sdkRootBefore.size > 0 || exists("/usr/bin/xcrun"))
+    let normalizedSdkRootBefore = trimAsciiText(sdkRootBefore)
+    let normalizedSdkRootCandidate = trimAsciiText(sdkRootCandidate)
+    let sdkRootRelevant = inspectSdkRoot && (
+        normalizedSdkRootCandidate.size > 0 || normalizedSdkRootBefore.size > 0 || exists("/usr/bin/xcrun")
+    )
     if (sdkRootRelevant) {
-        plan.sdkRootBefore = trimAsciiText(sdkRootBefore)
-        plan.sdkRootCandidate = trimAsciiText(sdkRootCandidate)
+        plan.sdkRootBefore = normalizedSdkRootBefore
+        plan.sdkRootCandidate = normalizedSdkRootCandidate
         plan.sdkRootDriftDetected = !verifyMacOsSdkRoot(plan.sdkRootBefore)
         plan.sdkRootCandidateVerified = verifyMacOsSdkRoot(plan.sdkRootCandidate)
         plan.sdkRootRepairAvailable = plan.sdkRootDriftDetected && plan.sdkRootCandidateVerified

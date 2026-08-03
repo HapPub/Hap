@@ -65,6 +65,12 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - name: Validate Linux native build tools
+        if: startsWith(matrix.target, 'linux-')
+        shell: bash
+        run: |
+          command -v ar
+          command -v ld
       - name: Install checksum-pinned Cangjie SDK
         shell: bash
         run: |
