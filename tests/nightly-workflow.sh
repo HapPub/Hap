@@ -99,6 +99,7 @@ assert status["windows-arm64"] == "unsupported-upstream-host-sdk"
 PY
 
 workflow="$ROOT/.github/workflows/nightly.yml"
+grep -q '"src/\*\*"' "$workflow" || fail_test "source push trigger is missing"
 grep -q 'ubuntu-24.04-arm' "$workflow" || fail_test "Linux ARM64 hosted runner is missing"
 grep -q 'macos-15-intel' "$workflow" || fail_test "macOS Intel hosted runner is missing"
 grep -q 'windows-2025' "$workflow" || fail_test "Windows AMD64 hosted runner is missing"

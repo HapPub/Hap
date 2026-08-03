@@ -1,6 +1,14 @@
 name: Nightly native matrix
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/nightly.yml"
+      - "cjpm.toml"
+      - "src/**"
+      - "scripts/ci/**"
   workflow_dispatch:
     inputs:
       sdk_tag:
