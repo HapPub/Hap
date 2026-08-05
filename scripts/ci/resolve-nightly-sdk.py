@@ -5,12 +5,21 @@ from pathlib import Path
 from urllib.parse import quote
 
 
-PLATFORMS = {
-    "linux-x64": ".tar.gz",
-    "linux-aarch64": ".tar.gz",
-    "mac-aarch64": ".tar.gz",
-    "mac-x64": ".tar.gz",
-    "windows-x64": ".zip",
+SDK_PROFILES = {
+    "linux-x64": ("cangjie-sdk-linux-x64-{tag}.tar.gz", "sdk"),
+    "linux-aarch64": ("cangjie-sdk-linux-aarch64-{tag}.tar.gz", "sdk"),
+    "linux-x64-android": ("cangjie-sdk-linux-x64-android-{tag}.tar.gz", "sdk"),
+    "linux-x64-ohos": ("cangjie-sdk-linux-x64-ohos-{tag}.tar.gz", "sdk"),
+    "mac-aarch64": ("cangjie-sdk-mac-aarch64-{tag}.tar.gz", "sdk"),
+    "mac-aarch64-android": ("cangjie-sdk-mac-aarch64-android-{tag}.tar.gz", "sdk"),
+    "mac-aarch64-ios": ("cangjie-sdk-mac-aarch64-ios-{tag}.tar.gz", "sdk"),
+    "mac-aarch64-ohos": ("cangjie-sdk-mac-aarch64-ohos-{tag}.tar.gz", "sdk"),
+    "mac-x64": ("cangjie-sdk-mac-x64-{tag}.tar.gz", "sdk"),
+    "ohos-aarch64": ("cangjie-sdk-ohos-aarch64-{tag}.tar.gz", "sdk"),
+    "windows-x64": ("cangjie-sdk-windows-x64-{tag}.zip", "sdk"),
+    "windows-x64-android": ("cangjie-sdk-windows-x64-android-{tag}.zip", "sdk"),
+    "windows-x64-ohos": ("cangjie-sdk-windows-x64-ohos-{tag}.zip", "sdk"),
+    "windows-x64-ohos-arm32": ("cangjie-sdk-windows-x64-ohos-arm32-{tag}.zip", "sdk"),
 }
 
 
@@ -21,7 +30,9 @@ def fail(message: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--manifest", type=Path, required=True)
-    parser.add_argument("--platform", choices=sorted(PLATFORMS), required=True)
+    selector = parser.add_mutually_exclusive_group(required=True)
+    selector.add_argument("--platform", choices=sorted(SDK_PROFILES))
+    selector.add_argument("--asset-name")
     parser.add_argument("--github-output", type=Path)
     args = parser.parse_args()
 
@@ -43,15 +54,22 @@ def main() -> None:
     if manifest.get("assetCount") != len(assets):
         fail("Cangjie SDK mirror asset count mismatch")
 
-    extension = PLATFORMS[args.platform]
-    expected_name = f"cangjie-sdk-{args.platform}-{tag}{extension}"
+    expected_classification = None
+    if args.platform:
+        pattern, expected_classification = SDK_PROFILES[args.platform]
+        expected_name = pattern.format(tag=tag)
+    else:
+        expected_name = args.asset_name
+        if not expected_name or expected_name != Path(expected_name).name:
+            fail("asset name must be one plain release filename")
     matches = [
         asset
         for asset in assets
-        if asset.get("classification") == "sdk" and asset.get("name") == expected_name
+        if asset.get("name") == expected_name
+        and (expected_classification is None or asset.get("classification") == expected_classification)
     ]
     if len(matches) != 1:
-        fail(f"expected exactly one native host SDK asset: {expected_name}")
+        fail(f"expected exactly one mirrored asset: {expected_name}")
     asset = matches[0]
     digest = asset.get("sha256", "")
     if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
@@ -67,22 +85,23 @@ def main() -> None:
         "schema": "happub-hap-nightly-sdk-selection-v1",
         "ok": True,
         "sdkTag": tag,
-        "sdkPlatform": args.platform,
+        "sdkPlatform": args.platform or "exact-asset",
         "sdkName": expected_name,
+        "classification": asset.get("classification", ""),
         "sdkUrl": expected_url,
         "sdkSha256": digest,
         "checksumAuthority": "mirror-computed-sha256",
         "status": "selected-from-complete-mirror-manifest",
         "nonPromises": [
-            "SDK selection does not prove the Hap build succeeds on this runner",
-            "cross SDK assets are not selected as native host SDKs",
+            "asset selection does not prove the Hap build succeeds on this runner",
+            "cross SDK selection does not prove target-runtime execution",
         ],
     }
     print(json.dumps(output, indent=2))
     if args.github_output:
         with args.github_output.open("a", encoding="utf-8") as destination:
             destination.write(f"sdk_tag={tag}\n")
-            destination.write(f"sdk_platform={args.platform}\n")
+            destination.write(f"sdk_platform={args.platform or 'exact-asset'}\n")
             destination.write(f"sdk_name={expected_name}\n")
             destination.write(f"sdk_url={expected_url}\n")
             destination.write(f"sdk_sha256={digest}\n")

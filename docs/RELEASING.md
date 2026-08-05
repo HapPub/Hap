@@ -27,3 +27,21 @@ the portable fallback.
 
 The generated release manifest is built from files downloaded from successful
 workflow jobs. It never turns a planned target into a downloadable asset.
+
+## Nightly Platform Evidence
+
+The nightly workflow follows the newest complete `CangjieSDK-Mirror` manifest
+unless an exact SDK tag is supplied manually. It verifies every mirrored asset
+name, URL, and SHA-256 and publishes `cangjie-sdk-coverage.v1.json` with one
+entry for every SDK, stdx, frontend, documentation, checksum, and source asset.
+
+Native nightly jobs cover Linux AMD64/ARM64, macOS ARM64/Intel, and Windows
+AMD64. Their archives are published only after build, test, package, and
+`hap version` gates, with status `built-and-smoke-verified`.
+
+The OHOS job uses the mirrored Linux-to-OHOS Cangjie SDK plus a checksum-verified
+OpenHarmony 6.1 native sysroot. It emits ARM64 and AMD64 archives only after ELF
+architecture and archive checks, with status `cross-built-link-verified`. These
+archives are not presented as target-runtime smoke proof. Windows ARM64 and x86
+remain explicit upstream gaps until a matching Cangjie host SDK is present in
+the mirrored release.

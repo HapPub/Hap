@@ -1,4 +1,4 @@
-name: Nightly native matrix
+name: Nightly full platform matrix
 
 on:
   push:
@@ -9,6 +9,7 @@ on:
       - "cjpm.toml"
       - "src/**"
       - "scripts/ci/**"
+      - "tests/nightly-workflow.sh"
   workflow_dispatch:
     inputs:
       sdk_tag:
@@ -22,7 +23,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: nightly-native-${{ inputs.sdk_tag || 'latest' }}
+  group: nightly-platform-${{ inputs.sdk_tag || 'latest' }}
   cancel-in-progress: false
 
 jobs:
@@ -60,10 +61,13 @@ jobs:
           manifest_url="https://github.com/HapPub/CangjieSDK-Mirror/releases/download/$tag/manifest.v1.json"
           curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
             "$manifest_url" -o "$RUNNER_TEMP/manifest.v1.json"
-          for platform in linux-x64 linux-aarch64 mac-aarch64 mac-x64 windows-x64; do
+          for platform in linux-x64 linux-aarch64 mac-aarch64 mac-x64 windows-x64 linux-x64-ohos; do
             python3 scripts/ci/resolve-nightly-sdk.py \
               --manifest "$RUNNER_TEMP/manifest.v1.json" --platform "$platform" >/dev/null
           done
+          python3 scripts/ci/render-sdk-coverage.py \
+            --manifest "$RUNNER_TEMP/manifest.v1.json" \
+            --output "$RUNNER_TEMP/cangjie-sdk-coverage.v1.json"
           hap_version=$(awk -F'"' '/HapCliVersion: String/ { print $2; exit }' src/hapcli.cj)
           [[ -n "$hap_version" ]]
           printf 'sdk_tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
@@ -73,6 +77,11 @@ jobs:
         with:
           name: cangjie-sdk-manifest
           path: ${{ runner.temp }}/manifest.v1.json
+          if-no-files-found: error
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: cangjie-sdk-coverage
+          path: ${{ runner.temp }}/cangjie-sdk-coverage.v1.json
           if-no-files-found: error
 
   native:
@@ -147,9 +156,62 @@ jobs:
           path: dist/*
           if-no-files-found: error
 
+  cross-ohos:
+    needs: resolve
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: cangjie-sdk-manifest
+          path: ${{ runner.temp }}/sdk-manifest
+      - id: sdk
+        name: Select checksum-pinned Linux-to-OHOS SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/ci/resolve-nightly-sdk.py \
+            --manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            --platform linux-x64-ohos \
+            --github-output "$GITHUB_OUTPUT"
+      - name: Install mirrored Linux-to-OHOS Cangjie SDK
+        shell: bash
+        run: |
+          bash scripts/ci/install-cangjie-sdk.sh \
+            '${{ steps.sdk.outputs.sdk_url }}' \
+            '${{ steps.sdk.outputs.sdk_sha256 }}' \
+            "$RUNNER_TEMP/cangjie-sdk" \
+            "$RUNNER_TEMP/cangjie-env.sh"
+      - id: ohos
+        name: Install checksum-verified OpenHarmony 6.1 native sysroot
+        uses: openharmony-rs/setup-ohos-sdk@eb82b94ef522b07269679195c2512f22e922ef3b # v1.0.0
+        with:
+          version: "6.1"
+          components: native
+          cache: "true"
+          mirror: "true"
+      - name: Cross-build and link-verify OHOS binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          for target in ohos-arm64 ohos-amd64; do
+            bash scripts/ci/build-cross-release.sh \
+              "$target" \
+              '${{ needs.resolve.outputs.hap_version }}' \
+              "$RUNNER_TEMP/cangjie-env.sh" \
+              '${{ steps.ohos.outputs.ohos_sdk_native }}' \
+              dist
+          done
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: nightly-ohos-cross
+          path: dist/*
+          if-no-files-found: error
+
   publish:
-    needs: [resolve, native]
-    if: ${{ always() && needs.resolve.result == 'success' && needs.native.result == 'success' }}
+    needs: [resolve, native, cross-ohos]
+    if: ${{ always() && needs.resolve.result == 'success' && needs.native.result == 'success' && needs.cross-ohos.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -164,6 +226,10 @@ jobs:
         with:
           name: cangjie-sdk-manifest
           path: ${{ runner.temp }}/sdk-manifest
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: cangjie-sdk-coverage
+          path: dist
       - name: Package source and render nightly receipt
         shell: bash
         run: |
@@ -172,6 +238,7 @@ jobs:
           python3 scripts/ci/render-nightly-manifest.py \
             --dist dist \
             --sdk-manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            --sdk-coverage dist/cangjie-sdk-coverage.v1.json \
             --hap-version '${{ needs.resolve.outputs.hap_version }}' \
             --release-tag '${{ needs.resolve.outputs.release_tag }}' \
             --repository "$GITHUB_REPOSITORY" \

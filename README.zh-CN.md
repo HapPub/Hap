@@ -142,16 +142,20 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | --- | --- | --- |
 | macOS arm64 仓颉/cjpm | 源码、测试和标签发布链已验证 | 当前仓颉 1.1.3 静态运行时对象要求 macOS 13.3，即使链接目标设置得更低也不能证明更老系统可运行。 |
 | Linux AMD64/ARM64 仓颉/cjpm | 已有标签发布链 | 每个发布必须由对应原生 Runner 完成构建、测试和二进制自检。 |
-| Windows 与 macOS Intel | 源码可审查 | POSIX FFI 与匹配的官方 SDK 发布链验证前，不声明提供二进制。 |
+| Windows AMD64 与 macOS Intel | nightly 原生构建链已验证 | 稳定版 `v0.1.0` 不变；nightly 二进制必须在匹配的托管 Runner 通过构建、测试、打包和 `hap version`。 |
+| OHOS ARM64/AMD64 | nightly 交叉构建和链接验证可用 | 产物尚未在 OHOS 设备上执行运行时自检，并依赖兼容的目标端仓颉运行时。 |
+| Windows ARM64/x86 | 已记录上游缺口 | 当前镜像的仓颉发布没有匹配的原生宿主 SDK，因此 HapCLI 不会把其他架构改名后声称支持。 |
 | HarmonyOS 应用 | 已有真实构建、安装和启动流程 | 需要可用的 DevEco 工具链、已授权设备和有效签名配置。 |
 | macOS KMP Desktop | 已验证真实 Gradle 构建与运行 | 其他桌面平台仍需单独现场验证。 |
 | KMP iOS/iPadOS | 已实现构建、安装和启动 | Apple 账号、证书、描述文件、开发团队、已配对设备和 CoreDevice 状态仍由主机提供。 |
 | Android 设备列表 | 支持只读 ADB 识别 | 尚未实现 APK 构建和安装编排。 |
 
-独立 nightly 工作流会使用 GitHub 原生 Runner 和镜像 manifest，尝试构建 Linux
-AMD64/ARM64、macOS ARM64/Intel 与 Windows AMD64。只有真正通过构建、测试、打包和
-`hap version` 自检的产物才标记为 `built-and-smoke-verified`；在没有真实 Runner
-前，HarmonyOS 只标记为 `sdk-mirrored-only`。
+独立 nightly 工作流会在匹配的 GitHub 托管 Runner 构建 Linux AMD64/ARM64、macOS
+ARM64/Intel 与 Windows AMD64；同时使用 Linux-to-OHOS 仓颉 SDK 和经过校验的
+OpenHarmony sysroot 交叉构建、链接验证 OHOS ARM64/AMD64。原生产物标记为
+`built-and-smoke-verified`，交叉产物标记为 `cross-built-link-verified`。每次 nightly
+还会发布机器可读的全镜像覆盖回执，逐项覆盖 SDK、stdx、frontend、文档与源码资产，
+并明确证明 Windows ARM64/x86 宿主 SDK 当前确实不存在。
 
 ## 配置与安全
 

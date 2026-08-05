@@ -10,3 +10,9 @@
   include = ["src", "README.md", "README.zh-CN.md", "README.ru.md", "LICENSE", "NOTICE", "docs", "contracts", "examples", "release"]
 
 [dependencies]
+
+[target.aarch64-linux-ohos]
+  compile-option = "-B \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/aarch64-linux-ohos\" -L \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/aarch64-linux-ohos\" --sysroot \"${OHOS_SDK_NATIVE}/sysroot\""
+
+[target.x86_64-linux-ohos]
+  compile-option = "-B \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/x86_64-linux-ohos\" -L \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/x86_64-linux-ohos\" --sysroot \"${OHOS_SDK_NATIVE}/sysroot\""

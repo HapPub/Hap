@@ -160,17 +160,22 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | --- | --- | --- |
 | Cangjie/cjpm on macOS arm64 | Source, tests, and tag release lane verified | Current Cangjie 1.1.3 static runtime objects require macOS 13.3 even when the linker target is lower. |
 | Cangjie/cjpm on Linux AMD64/ARM64 | Tag release lanes available | Each release is published only after the native runner builds, tests, and smoke-checks its binary. |
-| Windows and macOS Intel | Source remains inspectable | No binary is claimed until POSIX FFI and a matching official SDK lane are verified. |
+| Windows AMD64 and macOS Intel | Nightly native lanes verified | Stable `v0.1.0` remains unchanged; nightly binaries require build, test, package, and `hap version` gates on matching hosted runners. |
+| OHOS ARM64/AMD64 | Nightly cross-build and link verification available | The artifacts are not runtime-smoked on an OHOS device and require a compatible target Cangjie runtime. |
+| Windows ARM64/x86 | Upstream gap recorded | The mirrored Cangjie release has no matching native host SDK, so HapCLI does not relabel another architecture as support. |
 | HarmonyOS applications | Real build/install/launch workflow available | Requires a working DevEco toolchain, authorized device, and valid signing profile. |
 | KMP desktop on macOS | Real Gradle build/run verified | Other desktop hosts require separate field verification. |
 | KMP iOS/iPadOS | Build/install/launch implementation available | Apple account, certificate, profile, development team, paired device, and CoreDevice readiness remain host prerequisites. |
 | Android device listing | Read-only ADB discovery available | APK build/install orchestration is not implemented. |
 
-The separate nightly workflow attempts Linux AMD64/ARM64, macOS ARM64/Intel,
-and Windows AMD64 on GitHub-hosted native runners using the mirror manifest.
-Only produced binaries that pass build, tests, packaging, and `hap version`
-are listed as `built-and-smoke-verified`; HarmonyOS remains
-`sdk-mirrored-only` until a real runner exists.
+The separate nightly workflow builds Linux AMD64/ARM64, macOS ARM64/Intel, and
+Windows AMD64 on matching GitHub-hosted runners. It also cross-builds and
+link-verifies OHOS ARM64/AMD64 with a Linux-to-OHOS Cangjie SDK and a
+checksum-verified OpenHarmony sysroot. Native artifacts use
+`built-and-smoke-verified`; cross artifacts use `cross-built-link-verified`.
+Each nightly publishes a machine-readable receipt covering every mirrored SDK,
+stdx, frontend, documentation, and source asset, including explicit evidence
+for the unavailable Windows ARM64/x86 host SDKs.
 
 ## Configuration and Safety
 

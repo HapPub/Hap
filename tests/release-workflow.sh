@@ -15,6 +15,7 @@ for script in \
   "$ROOT/scripts/ci/install-cangjie-sdk.sh" \
   "$ROOT/scripts/ci/validate-release.sh" \
   "$ROOT/scripts/ci/build-release.sh" \
+  "$ROOT/scripts/ci/build-cross-release.sh" \
   "$ROOT/scripts/ci/package-source.sh" \
   "$ROOT/scripts/ci/write-sha256-sidecar.sh"
 do
@@ -23,9 +24,11 @@ done
 for python_script in \
   "$ROOT/scripts/ci/render-release-manifest.py" \
   "$ROOT/scripts/ci/render-nightly-manifest.py" \
+  "$ROOT/scripts/ci/render-sdk-coverage.py" \
   "$ROOT/scripts/ci/resolve-nightly-sdk.py" \
   "$ROOT/scripts/ci/safe-extract-tar.py" \
-  "$ROOT/scripts/ci/safe-extract-sdk.py"
+  "$ROOT/scripts/ci/safe-extract-sdk.py" \
+  "$ROOT/scripts/ci/verify-elf-target.py"
 do
 python3 - "$python_script" <<'PY'
 import pathlib
