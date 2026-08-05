@@ -55,8 +55,10 @@ PY
 if grep -R -n -E \
   'ExplorerX|CinPadA12X|4VF[0-9A-Z]+|5E8E1D23-1104-5A06-BA18-940124D86DDF|00008027-000925093422002E|/Users/cinyu|cela@vip\.qq\.com|Haomo|EveMind|WhyMind|HC[0-9]{3}|H036C|hapcli-(hc|h)[0-9]{3}' \
   --exclude=public-surface.sh \
+  --exclude='*.pyc' \
   --exclude-dir=.git \
   --exclude-dir=target \
+  --exclude-dir=__pycache__ \
   --exclude-dir=.cache \
   --exclude-dir=.vscode \
   "$ROOT"; then
