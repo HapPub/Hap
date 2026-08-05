@@ -98,12 +98,64 @@ printf 'source\n' > "$WORK/dist/hap-0.1.0-source.tar.gz"
 printf 'linux\n' > "$WORK/dist/hap-0.1.0-linux-amd64.tar.gz"
 printf 'ohos-arm64\n' > "$WORK/dist/hap-0.1.0-ohos-arm64.tar.gz"
 printf 'ohos-amd64\n' > "$WORK/dist/hap-0.1.0-ohos-amd64.tar.gz"
+python3 - "$WORK/dist" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+dist = pathlib.Path(sys.argv[1])
+archive = dist / "hap-0.1.0-linux-amd64.tar.gz"
+receipt = {
+    "schema": "happub-hap-native-runtime-portability-receipt-v1",
+    "ok": True,
+    "status": "sdk-independent-runtime-smoke-verified",
+    "target": "linux-amd64",
+    "version": "0.1.0",
+    "environmentMode": "empty-inherited-environment-with-minimal-os-baseline",
+    "inheritedSdkEnvironment": False,
+    "allowedEnvironmentVariables": ["HOME", "TMPDIR", "PATH", "LANG", "LC_ALL"],
+    "clearedEnvironmentVariables": [
+        "CANGJIE_HOME", "CANGJIE_STDX_PATH", "CJC_HOME", "CJPM_HOME",
+        "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "LIBRARY_PATH", "SDKROOT",
+    ],
+    "archive": {
+        "name": archive.name,
+        "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+    },
+    "binary": {"name": "hap", "sha256": "2" * 64},
+    "smoke": {
+        "command": "hap version",
+        "expectedVersion": "0.1.0",
+        "actualVersion": "0.1.0",
+        "exitCode": 0,
+    },
+}
+(dist / "hap-0.1.0-linux-amd64.runtime-portability.json").write_text(
+    json.dumps(receipt), encoding="utf-8"
+)
+PY
+mv "$WORK/dist/hap-0.1.0-linux-amd64.runtime-portability.json" "$WORK/missing-receipt.json"
+if python3 "$ROOT/scripts/ci/render-nightly-manifest.py" \
+  --dist "$WORK/dist" \
+  --sdk-manifest "$WORK/manifest.v1.json" \
+  --sdk-coverage "$WORK/cangjie-sdk-coverage.v1.json" \
+  --hap-version 0.1.0 \
+  --release-tag nightly-1.3.0-alpha.20260803010032-hap-f29b566f8351 \
+  --source-revision f29b566f8351df9d377c73944f028c9c4cf4df11 \
+  --repository HapPub/Hap \
+  --output "$WORK/rejected-nightly.json" \
+  --notes-output "$WORK/rejected-nightly.md" >/dev/null 2>&1; then
+  fail_test "nightly renderer accepted a native archive without portability receipt"
+fi
+mv "$WORK/missing-receipt.json" "$WORK/dist/hap-0.1.0-linux-amd64.runtime-portability.json"
 python3 "$ROOT/scripts/ci/render-nightly-manifest.py" \
   --dist "$WORK/dist" \
   --sdk-manifest "$WORK/manifest.v1.json" \
   --sdk-coverage "$WORK/cangjie-sdk-coverage.v1.json" \
   --hap-version 0.1.0 \
-  --release-tag nightly-1.3.0-alpha.20260803010032 \
+  --release-tag nightly-1.3.0-alpha.20260803010032-hap-f29b566f8351 \
+  --source-revision f29b566f8351df9d377c73944f028c9c4cf4df11 \
   --repository HapPub/Hap \
   --output "$WORK/nightly-manifest.v1.json" \
   --notes-output "$WORK/notes.md"
@@ -114,7 +166,8 @@ import sys
 manifest = json.load(open(sys.argv[1], encoding="utf-8"))
 status = {row["target"]: row["status"] for row in manifest["targetStatus"]}
 assert manifest["channel"] == "nightly"
-assert status["linux-amd64"] == "built-and-smoke-verified"
+assert manifest["sourceRevision"] == "f29b566f8351df9d377c73944f028c9c4cf4df11"
+assert status["linux-amd64"] == "sdk-independent-runtime-smoke-verified"
 assert status["windows-amd64"] == "runner-build-not-produced"
 assert status["ohos-arm64"] == "cross-built-link-verified"
 assert status["ohos-amd64"] == "cross-built-link-verified"
@@ -122,6 +175,7 @@ assert status["windows-arm64"] == "unsupported-upstream-host-sdk"
 assert status["windows-x86"] == "unsupported-upstream-host-sdk"
 assert manifest["cangjieSdk"]["coveredAssetCount"] == manifest["cangjieSdk"]["assetCount"]
 assert any(item["kind"] == "sdk-coverage-receipt" for item in manifest["assets"])
+assert any(item["kind"] == "native-runtime-portability-receipt" for item in manifest["assets"])
 PY
 
 python3 - "$WORK/cangjie-sdk-coverage.v1.json" <<'PY'
@@ -148,6 +202,7 @@ grep -q 'openharmony-rs/setup-ohos-sdk@eb82b94ef522b07269679195c2512f22e922ef3b'
 grep -q 'build-cross-release.sh' "$workflow" || fail_test "OHOS cross-build job is missing"
 grep -q 'cangjie-sdk-coverage.v1.json' "$workflow" || fail_test "full SDK coverage artifact is missing"
 grep -q 'continue-on-error:.*matrix.experimental' "$workflow" || fail_test "experimental target boundary is missing"
+grep -q 'sdk-independent-runtime-smoke-verified' "$ROOT/scripts/ci/runtime_portability.py" || fail_test "SDK-independent native status is missing"
 grep -q 'cross-built-link-verified' "$ROOT/scripts/ci/render-nightly-manifest.py" || fail_test "cross-build status is missing"
 grep -q 'cygpath -u' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "Windows runner path normalization is missing"
 grep -q 'Cangjie SDK install failed::phase=' "$ROOT/scripts/ci/install-cangjie-sdk.sh" || fail_test "SDK install phase annotation is missing"

@@ -158,10 +158,12 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 Windows AMD64 на соответствующих GitHub-hosted runner. Кроме того, OHOS
 ARM64/AMD64 cross-собираются и проверяются на этапе линковки с Linux-to-OHOS
 SDK Cangjie и проверенным по контрольной сумме sysroot OpenHarmony. Нативные
-артефакты получают статус `built-and-smoke-verified`, cross-артефакты —
-`cross-built-link-verified`. Каждый nightly также публикует машиночитаемый
-отчет по всем зеркальным SDK, stdx, frontend, документации и исходным архивам,
-включая явное доказательство отсутствия host SDK для Windows ARM64/x86.
+артефакты получают статус `sdk-independent-runtime-smoke-verified` только после
+запуска `hap version` из распакованного архива без унаследованного окружения
+SDK; cross-артефакты получают `cross-built-link-verified`. Каждый nightly также
+публикует машиночитаемые отчеты о переносимости runtime и обо всех зеркальных
+SDK, stdx, frontend, документации и исходных архивах, включая явное
+доказательство отсутствия host SDK для Windows ARM64/x86.
 
 ## Настройка и безопасность
 

@@ -152,10 +152,12 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 
 独立 nightly 工作流会在匹配的 GitHub 托管 Runner 构建 Linux AMD64/ARM64、macOS
 ARM64/Intel 与 Windows AMD64；同时使用 Linux-to-OHOS 仓颉 SDK 和经过校验的
-OpenHarmony sysroot 交叉构建、链接验证 OHOS ARM64/AMD64。原生产物标记为
-`built-and-smoke-verified`，交叉产物标记为 `cross-built-link-verified`。每次 nightly
-还会发布机器可读的全镜像覆盖回执，逐项覆盖 SDK、stdx、frontend、文档与源码资产，
-并明确证明 Windows ARM64/x86 宿主 SDK 当前确实不存在。
+OpenHarmony sysroot 交叉构建、链接验证 OHOS ARM64/AMD64。原生产物从归档解压后，
+必须在不继承仓颉 SDK 环境的条件下通过 `hap version`，才标记为
+`sdk-independent-runtime-smoke-verified`；交叉产物标记为
+`cross-built-link-verified`。每次 nightly 还会发布机器可读的运行时可移植性回执和
+全镜像覆盖回执，逐项覆盖 SDK、stdx、frontend、文档与源码资产，并明确证明
+Windows ARM64/x86 宿主 SDK 当前确实不存在。
 
 ## 配置与安全
 

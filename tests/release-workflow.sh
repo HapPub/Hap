@@ -15,6 +15,7 @@ for script in \
   "$ROOT/scripts/ci/install-cangjie-sdk.sh" \
   "$ROOT/scripts/ci/validate-release.sh" \
   "$ROOT/scripts/ci/build-release.sh" \
+  "$ROOT/scripts/ci/verify-sdk-independent-runtime.sh" \
   "$ROOT/scripts/ci/build-cross-release.sh" \
   "$ROOT/scripts/ci/package-source.sh" \
   "$ROOT/scripts/ci/write-sha256-sidecar.sh"
@@ -25,6 +26,7 @@ for python_script in \
   "$ROOT/scripts/ci/render-release-manifest.py" \
   "$ROOT/scripts/ci/render-nightly-manifest.py" \
   "$ROOT/scripts/ci/render-sdk-coverage.py" \
+  "$ROOT/scripts/ci/runtime_portability.py" \
   "$ROOT/scripts/ci/resolve-nightly-sdk.py" \
   "$ROOT/scripts/ci/safe-extract-tar.py" \
   "$ROOT/scripts/ci/safe-extract-sdk.py" \
@@ -53,6 +55,15 @@ grep -q 'gh release create' "$ROOT/.github/workflows/release.yml" || fail_test "
 grep -q 'hap_release_script_dir' "$ROOT/scripts/ci/build-release.sh" || {
   fail_test "native release helper path is not isolated from SDK env variables"
 }
+grep -q 'phase=sdk-independent-runtime-smoke' "$ROOT/scripts/ci/build-release.sh" || {
+  fail_test "SDK-independent extracted archive smoke is missing"
+}
+grep -q 'env -i' "$ROOT/scripts/ci/verify-sdk-independent-runtime.sh" || {
+  fail_test "runtime portability verifier does not clear the inherited environment"
+}
+grep -q 'CANGJIE_HOME' "$ROOT/scripts/ci/verify-sdk-independent-runtime.sh" || {
+  fail_test "runtime portability verifier does not guard Cangjie SDK variables"
+}
 if grep -R -E 'uses:[[:space:]]+actions/(checkout|upload-artifact|download-artifact)@v[0-9]+' "$ROOT/.github/workflows"; then
   fail_test "official release actions must be pinned to commit SHAs"
 fi
@@ -68,6 +79,32 @@ bash "$ROOT/scripts/ci/write-sha256-sidecar.sh" "$WORK/fixture.tar.gz"
   fail_test "checksum sidecar leaked its build path"
 }
 (cd "$WORK" && shasum -a 256 -c fixture.tar.gz.sha256 >/dev/null)
+
+printf '%s\n' \
+  '#!/bin/sh' \
+  '[ -z "${CANGJIE_HOME+x}" ] || exit 91' \
+  '[ -z "${CANGJIE_STDX_PATH+x}" ] || exit 92' \
+  '[ -z "${SDKROOT+x}" ] || exit 93' \
+  'printf "0.1.0\n"' > "$WORK/hap"
+chmod 0755 "$WORK/hap"
+CANGJIE_HOME=/forbidden-sdk \
+CANGJIE_STDX_PATH=/forbidden-stdx \
+SDKROOT=/forbidden-sdkroot \
+LD_LIBRARY_PATH=/forbidden-runtime \
+  bash "$ROOT/scripts/ci/verify-sdk-independent-runtime.sh" \
+    linux-amd64 0.1.0 "$WORK/hap" "$WORK/fixture.tar.gz" \
+    "$WORK/runtime-portability.json" >/dev/null
+python3 - "$WORK/runtime-portability.json" <<'PY'
+import json
+import sys
+
+receipt = json.load(open(sys.argv[1], encoding="utf-8"))
+assert receipt["ok"] is True
+assert receipt["status"] == "sdk-independent-runtime-smoke-verified"
+assert receipt["inheritedSdkEnvironment"] is False
+assert receipt["smoke"]["actualVersion"] == "0.1.0"
+assert receipt["archive"]["name"] == "fixture.tar.gz"
+PY
 
 python3 - "$WORK" <<'PY'
 import io
@@ -107,6 +144,52 @@ printf 'fixture\n' > "$WORK/dist/hap-0.1.0-source.tar.gz"
 for target in darwin-arm64 linux-amd64 linux-arm64; do
   printf 'fixture-%s\n' "$target" > "$WORK/dist/hap-0.1.0-$target.tar.gz"
 done
+python3 - "$WORK/dist" <<'PY'
+import hashlib
+import json
+import pathlib
+import sys
+
+dist = pathlib.Path(sys.argv[1])
+cleared = [
+    "CANGJIE_HOME", "CANGJIE_STDX_PATH", "CJC_HOME", "CJPM_HOME",
+    "LD_LIBRARY_PATH", "DYLD_LIBRARY_PATH", "LIBRARY_PATH", "SDKROOT",
+]
+for target in ("darwin-arm64", "linux-amd64", "linux-arm64"):
+    archive = dist / f"hap-0.1.0-{target}.tar.gz"
+    receipt = {
+        "schema": "happub-hap-native-runtime-portability-receipt-v1",
+        "ok": True,
+        "status": "sdk-independent-runtime-smoke-verified",
+        "target": target,
+        "version": "0.1.0",
+        "environmentMode": "empty-inherited-environment-with-minimal-os-baseline",
+        "inheritedSdkEnvironment": False,
+        "allowedEnvironmentVariables": ["HOME", "TMPDIR", "PATH", "LANG", "LC_ALL"],
+        "clearedEnvironmentVariables": cleared,
+        "archive": {
+            "name": archive.name,
+            "sha256": hashlib.sha256(archive.read_bytes()).hexdigest(),
+        },
+        "binary": {"name": "hap", "sha256": "1" * 64},
+        "smoke": {
+            "command": "hap version",
+            "expectedVersion": "0.1.0",
+            "actualVersion": "0.1.0",
+            "exitCode": 0,
+        },
+    }
+    output = dist / f"hap-0.1.0-{target}.runtime-portability.json"
+    output.write_text(json.dumps(receipt), encoding="utf-8")
+PY
+mv "$WORK/dist/hap-0.1.0-linux-amd64.runtime-portability.json" "$WORK/missing-receipt.json"
+if python3 "$ROOT/scripts/ci/render-release-manifest.py" \
+  --dist "$WORK/dist" --version 0.1.0 --tag v0.1.0 \
+  --repository HapPub/Hap --output "$WORK/rejected.json" \
+  --notes-output "$WORK/rejected.md" >/dev/null 2>&1; then
+  fail_test "release renderer accepted a native archive without portability receipt"
+fi
+mv "$WORK/missing-receipt.json" "$WORK/dist/hap-0.1.0-linux-amd64.runtime-portability.json"
 python3 "$ROOT/scripts/ci/render-release-manifest.py" \
   --dist "$WORK/dist" \
   --version 0.1.0 \
@@ -130,6 +213,10 @@ assert targets == {"darwin-arm64", "linux-amd64", "linux-arm64"}
 assert manifest["channel"] == "stable"
 assert manifest["plannedAssets"] == []
 assert all(len(item["sha256"]) == 64 for item in manifest["downloadableAssets"])
+binary_assets = [item for item in manifest["downloadableAssets"] if item["kind"] == "flagship-binary"]
+assert all(item["status"] == "sdk-independent-runtime-smoke-verified" for item in binary_assets)
+assert all(item["runtimePortabilityReceipt"]["status"] == "sdk-independent-runtime-smoke-verified" for item in binary_assets)
+assert "empty inherited environment" in manifest["runtimePortabilityPolicy"]
 PY
 
 printf '%s\n' "release workflow tests passed"

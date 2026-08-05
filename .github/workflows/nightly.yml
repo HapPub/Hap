@@ -33,6 +33,7 @@ jobs:
       sdk_tag: ${{ steps.resolve.outputs.sdk_tag }}
       hap_version: ${{ steps.resolve.outputs.hap_version }}
       release_tag: ${{ steps.resolve.outputs.release_tag }}
+      source_revision: ${{ steps.resolve.outputs.source_revision }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - id: resolve
@@ -70,9 +71,11 @@ jobs:
             --output "$RUNNER_TEMP/cangjie-sdk-coverage.v1.json"
           hap_version=$(awk -F'"' '/HapCliVersion: String/ { print $2; exit }' src/hapcli.cj)
           [[ -n "$hap_version" ]]
+          hap_revision=${GITHUB_SHA:0:12}
           printf 'sdk_tag=%s\n' "$tag" >> "$GITHUB_OUTPUT"
           printf 'hap_version=%s\n' "$hap_version" >> "$GITHUB_OUTPUT"
-          printf 'release_tag=nightly-%s\n' "$tag" >> "$GITHUB_OUTPUT"
+          printf 'source_revision=%s\n' "$GITHUB_SHA" >> "$GITHUB_OUTPUT"
+          printf 'release_tag=nightly-%s-hap-%s\n' "$tag" "$hap_revision" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: cangjie-sdk-manifest
@@ -241,6 +244,7 @@ jobs:
             --sdk-coverage dist/cangjie-sdk-coverage.v1.json \
             --hap-version '${{ needs.resolve.outputs.hap_version }}' \
             --release-tag '${{ needs.resolve.outputs.release_tag }}' \
+            --source-revision '${{ needs.resolve.outputs.source_revision }}' \
             --repository "$GITHUB_REPOSITORY" \
             --output dist/nightly-manifest.v1.json \
             --notes-output "$RUNNER_TEMP/nightly-notes.md"

@@ -23,7 +23,8 @@ the portable fallback.
 5. Confirm that all native jobs pass and that the GitHub release contains
    `manifest.v0.json`, `SHA256SUMS`, Hapup, source, and all three native archives.
 6. Download one release archive through its manifest and rerun `hap version` on
-   the target host before announcing broad availability.
+   the target host with an empty inherited environment. Preserve the matching
+   `*.runtime-portability.json` receipt before announcing broad availability.
 
 The generated release manifest is built from files downloaded from successful
 workflow jobs. It never turns a planned target into a downloadable asset.
@@ -34,10 +35,17 @@ The nightly workflow follows the newest complete `CangjieSDK-Mirror` manifest
 unless an exact SDK tag is supplied manually. It verifies every mirrored asset
 name, URL, and SHA-256 and publishes `cangjie-sdk-coverage.v1.json` with one
 entry for every SDK, stdx, frontend, documentation, checksum, and source asset.
+Nightly release tags bind both the exact SDK tag and the first 12 characters of
+the full Hap source revision; artifacts from a newer Hap commit never overwrite
+a release that still points at older source.
 
 Native nightly jobs cover Linux AMD64/ARM64, macOS ARM64/Intel, and Windows
-AMD64. Their archives are published only after build, test, package, and
-`hap version` gates, with status `built-and-smoke-verified`.
+AMD64. Their archives are published only after build, test, package, and exact
+`hap version` gates under `env -i`. Cangjie/stdx homes, compiler/linker library
+paths, `SDKROOT`, DevEco and OHOS SDK variables are absent; only a minimal OS
+baseline is retained. Accepted targets report
+`sdk-independent-runtime-smoke-verified` and publish a receipt bound to the
+archive and binary SHA-256 values.
 
 The OHOS job uses the mirrored Linux-to-OHOS Cangjie SDK plus a checksum-verified
 OpenHarmony 6.1 native sysroot. It emits ARM64 and AMD64 archives only after ELF

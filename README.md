@@ -172,10 +172,12 @@ The separate nightly workflow builds Linux AMD64/ARM64, macOS ARM64/Intel, and
 Windows AMD64 on matching GitHub-hosted runners. It also cross-builds and
 link-verifies OHOS ARM64/AMD64 with a Linux-to-OHOS Cangjie SDK and a
 checksum-verified OpenHarmony sysroot. Native artifacts use
-`built-and-smoke-verified`; cross artifacts use `cross-built-link-verified`.
-Each nightly publishes a machine-readable receipt covering every mirrored SDK,
-stdx, frontend, documentation, and source asset, including explicit evidence
-for the unavailable Windows ARM64/x86 host SDKs.
+`sdk-independent-runtime-smoke-verified` after the extracted binary passes
+`hap version` with an empty inherited SDK environment; cross artifacts use
+`cross-built-link-verified`. Each nightly publishes machine-readable runtime
+portability receipts plus a receipt covering every mirrored SDK, stdx,
+frontend, documentation, and source asset, including explicit evidence for the
+unavailable Windows ARM64/x86 host SDKs.
 
 ## Configuration and Safety
 

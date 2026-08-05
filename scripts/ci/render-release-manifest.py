@@ -1,8 +1,13 @@
 #!/usr/bin/env python3
 import argparse
-import hashlib
 import json
 from pathlib import Path
+
+from runtime_portability import (
+    VERIFIED_STATUS,
+    load_runtime_portability_receipt,
+    sha256,
+)
 
 
 TARGETS = {
@@ -10,14 +15,6 @@ TARGETS = {
     "linux-amd64": ("linux", "amd64"),
     "linux-arm64": ("linux", "arm64"),
 }
-
-
-def sha256(path: Path) -> str:
-    digest = hashlib.sha256()
-    with path.open("rb") as source:
-        for chunk in iter(lambda: source.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
 
 
 def main() -> None:
@@ -58,6 +55,9 @@ def main() -> None:
         path = args.dist / f"hap-{args.version}-{target}.tar.gz"
         if not path.is_file():
             raise SystemExit(f"required release target is missing: {target}")
+        receipt_path, receipt = load_runtime_portability_receipt(
+            args.dist, args.version, target, path
+        )
         checksum = sha256(path)
         assets.append({
             "id": f"hap-{target}",
@@ -70,6 +70,13 @@ def main() -> None:
             "sha256": checksum,
             "downloadable": True,
             "executable": True,
+            "status": VERIFIED_STATUS,
+            "runtimePortabilityReceipt": {
+                "name": receipt_path.name,
+                "url": f"{base_url}/{receipt_path.name}",
+                "sha256": sha256(receipt_path),
+                "status": receipt["status"],
+            },
         })
         binary_rows.append((target, path.name, checksum))
 
@@ -102,9 +109,11 @@ def main() -> None:
             "--target auto --install-dir \"$HOME/.local/bin\" --review-token reviewed"
         ),
         "sourceBuildSupported": True,
-        "checksumPolicy": "all downloadable assets are SHA-256 recorded after successful build and smoke verification",
+        "runtimePortabilityPolicy": "native archives must pass hap version with an empty inherited environment and no Cangjie SDK paths",
+        "checksumPolicy": "all downloadable assets are SHA-256 recorded after successful build and SDK-independent runtime smoke verification",
         "nonPromises": [
             "release binaries cover only the targets present in downloadableAssets",
+            "SDK-independent version smoke does not verify every Hap command or external toolchain",
             "release binaries do not bundle project-specific HarmonyOS, Apple, Android, Gradle, or DevEco toolchains",
             "Windows and macOS Intel binaries are not claimed by this release",
         ],
@@ -115,7 +124,7 @@ def main() -> None:
         f"# HapCLI {args.version}",
         "",
         "This release is assembled from tag-matched source and verified native builds.",
-        "Every binary asset passed `hap version` before publication.",
+        "Every binary asset passed `hap version` from its extracted archive with an empty inherited SDK environment before publication.",
         "",
         "| Target | Asset | SHA-256 |",
         "| --- | --- | --- |",

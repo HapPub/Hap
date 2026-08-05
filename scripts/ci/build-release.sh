@@ -108,6 +108,7 @@ fi
   printf 'release binary is missing: %s\n' "$binary" >&2
   exit 1
 }
+phase=sdk-environment-binary-smoke
 [[ "$("$binary" version)" == "$version" ]] || {
   printf 'release binary version smoke failed\n' >&2
   exit 1
@@ -142,14 +143,21 @@ else
 fi
 bash "$hap_release_script_dir/write-sha256-sidecar.sh" "$archive"
 
-phase=archive-smoke
+phase=archive-extract
 verify=$(mktemp -d "$temp_root/hap-smoke.XXXXXXXX")
 if [[ "$archive_extension" == zip ]]; then
   "$python_bin" -m zipfile -e "$archive" "$verify"
 else
   tar -xzf "$archive" -C "$verify"
 fi
-"$verify/$package/bin/$binary_name" version | grep -Fx "$version" >/dev/null
+phase=sdk-independent-runtime-smoke
+runtime_receipt="$dist_dir/$package.runtime-portability.json"
+bash "$hap_release_script_dir/verify-sdk-independent-runtime.sh" \
+  "$target" \
+  "$version" \
+  "$verify/$package/bin/$binary_name" \
+  "$archive" \
+  "$runtime_receipt"
 rm -rf "$verify"
 
 phase=complete
