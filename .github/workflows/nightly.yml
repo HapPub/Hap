@@ -122,8 +122,7 @@ jobs:
         with:
           name: cangjie-sdk-manifest
           path: ${{ runner.temp }}/sdk-manifest
-      - id: sdk
-        name: Select checksum-pinned native SDK
+      - name: Bootstrap checksum-pinned native SDK
         shell: bash
         run: |
           set -euo pipefail
@@ -133,18 +132,12 @@ jobs:
             python_cmd=python
           fi
           printf 'PYTHON=%s\n' "$python_cmd" >> "$GITHUB_ENV"
-          "$python_cmd" scripts/ci/resolve-nightly-sdk.py \
-            --manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
-            --platform '${{ matrix.sdk_platform }}' \
-            --github-output "$GITHUB_OUTPUT"
-      - name: Install mirrored native SDK
-        shell: bash
-        run: |
-          bash scripts/ci/install-cangjie-sdk.sh \
-            '${{ steps.sdk.outputs.sdk_url }}' \
-            '${{ steps.sdk.outputs.sdk_sha256 }}' \
+          PYTHON="$python_cmd" bash scripts/ci/bootstrap-cangjie-from-mirror.sh \
+            "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            '${{ matrix.sdk_platform }}' \
             "$RUNNER_TEMP/cangjie-sdk" \
-            "$RUNNER_TEMP/cangjie-env.sh"
+            "$RUNNER_TEMP/cangjie-env.sh" \
+            "$RUNNER_TEMP/cangjie-sdk-resolution.json"
       - name: Build, test, package, and smoke
         shell: bash
         run: |
@@ -153,6 +146,8 @@ jobs:
             '${{ needs.resolve.outputs.hap_version }}' \
             "$RUNNER_TEMP/cangjie-env.sh" \
             dist
+          cp "$RUNNER_TEMP/cangjie-sdk-resolution.json" \
+            "dist/hap-${{ needs.resolve.outputs.hap_version }}-${{ matrix.target }}.cangjie-sdk-resolution.json"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: nightly-${{ matrix.target }}
@@ -169,23 +164,16 @@ jobs:
         with:
           name: cangjie-sdk-manifest
           path: ${{ runner.temp }}/sdk-manifest
-      - id: sdk
-        name: Select checksum-pinned Linux-to-OHOS SDK
+      - name: Bootstrap checksum-pinned Linux-to-OHOS SDK
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/ci/resolve-nightly-sdk.py \
-            --manifest "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
-            --platform linux-x64-ohos \
-            --github-output "$GITHUB_OUTPUT"
-      - name: Install mirrored Linux-to-OHOS Cangjie SDK
-        shell: bash
-        run: |
-          bash scripts/ci/install-cangjie-sdk.sh \
-            '${{ steps.sdk.outputs.sdk_url }}' \
-            '${{ steps.sdk.outputs.sdk_sha256 }}' \
+          PYTHON=python3 bash scripts/ci/bootstrap-cangjie-from-mirror.sh \
+            "$RUNNER_TEMP/sdk-manifest/manifest.v1.json" \
+            linux-x64-ohos \
             "$RUNNER_TEMP/cangjie-sdk" \
-            "$RUNNER_TEMP/cangjie-env.sh"
+            "$RUNNER_TEMP/cangjie-env.sh" \
+            "$RUNNER_TEMP/cangjie-sdk-resolution.json"
       - id: ohos
         name: Install checksum-verified OpenHarmony 6.1 native sysroot
         uses: openharmony-rs/setup-ohos-sdk@eb82b94ef522b07269679195c2512f22e922ef3b # v1.0.0
@@ -206,6 +194,8 @@ jobs:
               '${{ steps.ohos.outputs.ohos_sdk_native }}' \
               dist
           done
+          cp "$RUNNER_TEMP/cangjie-sdk-resolution.json" \
+            "dist/hap-${{ needs.resolve.outputs.hap_version }}-ohos-cross.cangjie-sdk-resolution.json"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
           name: nightly-ohos-cross

@@ -125,6 +125,23 @@ surface. `global` routes to the byte-preserving
 the mirror's `manifest.v1.json` as their SHA-256 authority. An explicit
 `--provider-url` stays custom and has no silent fallback.
 
+For reviewed GitHub Actions and other hosted runners, the repository provides
+a real mirror-to-environment bridge:
+
+```bash
+bash scripts/ci/bootstrap-cangjie-from-mirror.sh \
+  https://github.com/HapPub/CangjieSDK-Mirror/releases/download/<nightly-tag>/manifest.v1.json \
+  linux-x64 "$RUNNER_TEMP/cangjie" "$RUNNER_TEMP/cangjie-env.sh" \
+  "$RUNNER_TEMP/cangjie-sdk-resolution.json"
+source "$RUNNER_TEMP/cangjie-env.sh"
+```
+
+The bridge resolves one exact SDK and mirror SHA-256, performs the verified
+runner installation, and writes both a sourceable environment file and a JSON
+receipt. It does not mutate shell rc files or the parent process environment.
+See [Full Cangjie Artifact Action](docs/CANGJIE_FULL_ARTIFACT_ACTION.md) for the
+Linux, macOS, Windows, and OHOS cross-build matrix.
+
 ### HarmonyOS application development
 
 ```bash
