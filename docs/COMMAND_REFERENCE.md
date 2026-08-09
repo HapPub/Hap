@@ -41,6 +41,31 @@ The built-in routes refer to the mirror `manifest.v1.json` for SHA-256 evidence.
 The plan does not fetch the manifest, download an archive, install a runtime, or
 claim that a mirrored target has passed a Hap build.
 
+## Cangjie Build Bootstrap
+
+`hap build --project . --target <target>` is the executing flagship surface.
+It enables automatic Cangjie SDK/stdx bootstrap by default when `cjpm` is
+missing or the first fixed build reports a target-toolchain failure. The
+bootstrap uses only the built-in mirror contract, installs into Hap private
+cache, injects environment into the build child only, and performs at most one
+classified build retry.
+
+```text
+--toolchain-bootstrap | --no-toolchain-bootstrap
+--sdk-version <tag>
+--region auto|global|zh-cn
+--download-acceleration auto|off
+--toolchain-cache-root <path>
+--accelerator <allowlisted-url>   # repeatable
+```
+
+Config keys additionally expose `toolchainBootstrapTimeoutSeconds`,
+`toolchainDownloadRetryCount`, and `downloadAccelerators`. Public accelerators
+are transport candidates only; manifest SHA-256 remains the authority. A cache
+hit requires version-and-checksum-bound completion markers but does not re-hash
+all extracted files on every build. OpenHarmony native sysroot, signing,
+runtime, and device proof remain separate prerequisites.
+
 ## Output Modes
 
 - Default output is concise and intended for interactive use.

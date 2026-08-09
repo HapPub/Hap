@@ -212,6 +212,26 @@ Supported values are `auto`, `global`, and `zh-cn`:
 downloadRegion = "auto"
 ```
 
+For Cangjie projects, `hap build --target ohos` enables a flagship-only
+toolchain bootstrap by default. If `cjpm` or the selected target stdx is not
+available, Hap resolves one exact SDK/stdx pair from the mirror manifest,
+checks downloaded archives against its SHA-256 values, installs them under a
+private cache, and exposes them only to the fixed build child process:
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+Use `--no-toolchain-bootstrap` to disable it. SDK/stdx bootstrap does not
+install or prove the OpenHarmony native sysroot, signing assets, runtime, or
+device acceptance.
+
 Device aliases use the same local-first fallback model. Public examples use
 synthetic identifiers; do not commit real serial numbers, UDIDs, LAN endpoints,
 tokens, receipts, or device-memory files.

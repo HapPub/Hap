@@ -175,6 +175,23 @@ HapCLI 按以下顺序读取私有配置：
 downloadRegion = "auto"
 ```
 
+对于仓颉项目，旗舰版 `hap build --target ohos` 默认启用工具链自举。如果当前
+环境缺少 `cjpm` 或目标 stdx，Hap 会从镜像 manifest 精确解析一组 SDK/stdx，
+按 SHA-256 校验下载归档，安装到私有缓存，并且只向固定构建子进程暴露：
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+可以用 `--no-toolchain-bootstrap` 关闭。SDK/stdx 自举不会安装或证明
+OpenHarmony native sysroot、签名资产、运行时或设备验收。
+
 设备别名使用同样的本地优先回退方式。公开示例只使用合成标识；请勿提交真实设备序列号、UDID、局域网地址、令牌、回执或设备记忆文件。
 
 子工具进程默认使用 `no-proxy`。只有明确传入 `--proxy` 时，才继承当前 Shell 的代理变量。Review token 只是人工确认的存在性闸门，不是身份认证凭据。受审执行入口不接受任意 Shell 指令。

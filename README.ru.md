@@ -181,6 +181,26 @@ HapCLI читает приватную конфигурацию в следую�
 downloadRegion = "auto"
 ```
 
+Для проектов Cangjie флагманская команда `hap build --target ohos` по
+умолчанию включает bootstrap toolchain. Если отсутствует `cjpm` или целевой
+stdx, Hap выбирает точную пару SDK/stdx из manifest зеркала, проверяет
+загруженные архивы по SHA-256, устанавливает их в приватный кеш и передает
+окружение только фиксированному дочернему процессу сборки:
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+Отключение выполняется через `--no-toolchain-bootstrap`. Bootstrap SDK/stdx
+не устанавливает и не подтверждает native sysroot OpenHarmony, подпись,
+runtime или приемку на устройстве.
+
 Псевдонимы устройств используют ту же локальную схему резервных путей. В публичных примерах применяются только синтетические идентификаторы. Не добавляйте в репозиторий реальные серийные номера, UDID, адреса локальной сети, токены, отчеты или файлы памяти устройств.
 
 Дочерние процессы по умолчанию запускаются в режиме `no-proxy`. Передайте `--proxy`, только если процесс должен наследовать переменные прокси текущей оболочки. Review token — это признак ручного подтверждения, а не средство аутентификации. Проверяемые поверхности выполнения не принимают произвольные shell-команды.

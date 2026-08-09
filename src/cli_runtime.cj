@@ -696,6 +696,9 @@ public func renderHapCliHelp(): String {
     "  record cangjie.stdx --target <target>            Learn stdx target parameters from an existing cjpm project\n" +
     "  doctorfix cangjie.stdx --target <target>         Plan or write a recorded stdx target repair with backup\n" +
     "  build --project <path> --target <target>          Run fixed cjpm build with bounded environment/stdx repair\n" +
+    "       [--toolchain-bootstrap|--no-toolchain-bootstrap]\n" +
+    "       [--sdk-version V] [--region auto|global|zh-cn] [--toolchain-cache-root P]\n" +
+    "                                                     Bootstrap missing Cangjie SDK/stdx into Hap private cache\n" +
     "  bundle --project <path> [--skip-lint]             Run fixed cjpm bundle after central dependency topology diagnosis\n" +
     "       [--env-fix|--no-env-fix] [--openssl-lib P]   Use verified child-process-only OpenSSL environment repair\n" +
     "  cjpm graph discover-manifests --root <dir>        Discover cjpm manifests under explicit roots\n" +
