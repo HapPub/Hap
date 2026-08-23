@@ -146,9 +146,15 @@ public class HarmonyWindowCaptureTest {
         let snapshot = indexOfText(json, "snapshot_display")
         let crop = indexOfText(json, "crop <wms-x>")
         @Assert(containsText(json, "\"status\": \"plan-ready\""), true)
+        @Assert(containsText(json, "shell aa force-stop cc.example.player"), true)
         @Assert(launch >= 0 && launch < wms, true)
         @Assert(wms < snapshot && snapshot < crop, true)
         @Assert(containsText(json, "--ww 1350 --wh 900"), true)
+
+        options.keepRunning = true
+        let keepRunningJson = renderHapPrntPlanJson(options)
+        @Assert(containsText(keepRunningJson, "shell aa force-stop cc.example.player"), false)
+        @Assert(containsText(keepRunningJson, "\"appRestartRequested\": false"), true)
     }
 
     @TestCase

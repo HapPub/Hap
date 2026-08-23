@@ -15,12 +15,24 @@ cat > "$FAKE_BIN/hdc" <<'SH'
 set -eu
 printf 'hdc %s\n' "$*" >> "$HAP_PRNT_FAKE_LOG"
 
+parent_command="$(ps -p "$PPID" -o comm= 2>/dev/null || true)"
+case "$parent_command" in
+  sh|*/sh)
+    printf 'fake hdc refuses background timeout-shell parent: %s\n' "$parent_command" >&2
+    exit 88
+    ;;
+esac
+
 if [ "${1:-}" = "list" ] && [ "${2:-}" = "targets" ]; then
   printf 'FAKE001\n'
   exit 0
 fi
 if [ "${1:-}" = "-t" ]; then
   shift 2
+fi
+if [ "${1:-}" = "shell" ] && [ "${2:-}" = "aa" ] && [ "${3:-}" = "force-stop" ]; then
+  printf 'force stop process successfully.\n'
+  exit 0
 fi
 if [ "${1:-}" = "shell" ] && [ "${2:-}" = "aa" ] && [ "${3:-}" = "start" ]; then
   printf 'start ability successfully.\n'
@@ -93,14 +105,22 @@ grep -q '"wmsVerified": true' "$TMP_ROOT/result.json"
 grep -q '"displayCaptureTaken": true' "$TMP_ROOT/result.json"
 grep -q '"cropActionTaken": true' "$TMP_ROOT/result.json"
 grep -q '"remoteCleanupSucceeded": true' "$TMP_ROOT/result.json"
+grep -q '"hdcExecutionMode": "foreground-fixed-argv"' "$TMP_ROOT/result.json"
+grep -q '"hdcTimeoutSecondsRequested": 15' "$TMP_ROOT/result.json"
+grep -q '"hdcTimeoutEnforced": false' "$TMP_ROOT/result.json"
+grep -q '"appRestartRequested": true' "$TMP_ROOT/result.json"
+grep -q '"appForceStopTaken": true' "$TMP_ROOT/result.json"
+grep -q -- 'shell aa force-stop cc.c2l.corePlayer' "$LOG_PATH"
 grep -q -- 'shell aa start -a ProductAbility -b cc.c2l.corePlayer -m product --wl 40 --wt 50 --ww 1600 --wh 900' "$LOG_PATH"
 grep -q -- 'shell snapshot_display -i 0 -f /data/local/tmp/hapcli-prnt-18359.jpeg' "$LOG_PATH"
 grep -q -- 'magick .* -crop 640x360+11+22 +repage ' "$LOG_PATH"
 
+stop_line="$(grep -n 'shell aa force-stop' "$LOG_PATH" | cut -d: -f1)"
 launch_line="$(grep -n 'shell aa start' "$LOG_PATH" | cut -d: -f1)"
 wms_line="$(grep -n 'WindowManagerService' "$LOG_PATH" | cut -d: -f1)"
 snapshot_line="$(grep -n 'snapshot_display' "$LOG_PATH" | cut -d: -f1)"
 crop_line="$(grep -n '^magick ' "$LOG_PATH" | cut -d: -f1)"
+test "$stop_line" -lt "$launch_line"
 test "$launch_line" -lt "$wms_line"
 test "$wms_line" -lt "$snapshot_line"
 test "$snapshot_line" -lt "$crop_line"

@@ -686,7 +686,8 @@ public func renderHapCliHelp(): String {
     "       --layoutType Tablet --ratio Fold4:3          Tablet/Fold: Fold4:3, Fold√2:1, Fold1.15:1, 16:9, 3:2, 7:5\n" +
     "       --layoutType PC --ratio 2in1                 PC: 2in1; trible requires explicit --width and --height\n" +
     "       [--left N --top N] [--output-dir <path>]     Resize first; crop the PID-bound actual WMS rectangle\n" +
-    "       [--bundle B --ability A --module M] [--plan] Override inference or preview the fixed command chain\n" +
+    "       [--keep-running] [--plan]                    Cold launch by default; preserve current UI state on recapture\n" +
+    "       [--bundle B --ability A --module M]          Override inferred application identity\n" +
     "  build --plan --platform <kind>                   Plan fixed adapter build command templates without executing\n" +
     "  build --platform harmonyos --execute-reviewed    Run fixed HarmonyOS adapter only after review token and receipt\n" +
     "  test --project <path> [--lint]                   Plan fixed adapter test command templates without executing\n" +

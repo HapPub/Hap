@@ -22,6 +22,7 @@ public class HapPrntOptions {
     public var top: Int64 = 100
     public var waitMilliseconds: Int64 = 1500
     public var timeoutSeconds: Int64 = 15
+    public var keepRunning: Bool = false
     public var outputDir: String = ""
     public var cropper: String = "auto"
     public var plan: Bool = false
@@ -88,6 +89,11 @@ class HapPrntReceipt {
     var screenshotPath: String = ""
     var screenshotSha256: String = ""
     var receiptPath: String = ""
+    var hdcExecutionMode: String = "foreground-fixed-argv"
+    var hdcTimeoutSecondsRequested: Int64 = 0
+    var hdcTimeoutEnforced: Bool = false
+    var appRestartRequested: Bool = true
+    var appForceStopTaken: Bool = false
     var executionActionTaken: Bool = false
     var deviceMutationActionTaken: Bool = false
     var wmsVerified: Bool = false
@@ -283,6 +289,11 @@ public func resolveHapPrntOptions(commandLine: Array<String>, startIndex: Int64)
         }
         if (startsWithText(current, "--timeout-seconds=")) {
             options.timeoutSeconds = parseHapPrntInteger(substringFrom(current, 18), -1)
+            i += 1
+            continue
+        }
+        if (current == "--keep-running" || current == "--no-force-stop") {
+            options.keepRunning = true
             i += 1
             continue
         }
@@ -551,22 +562,20 @@ public func runHapPrnt(options: HapPrntOptions): String {
 
     receipt.commands.add("hdc-list-targets")
     receipt.executionActionTaken = true
-    let (listCode, listOut, listErr) = executeHapDeviceCommandWithTimeout(config.hdcPath, ["list", "targets"], options.timeoutSeconds)
+    let (listCode, listOut, listErr) = executeHapPrntHdcForeground(config.hdcPath, ["list", "targets"])
     let listText = String.fromUtf8(listOut) + "\n" + String.fromUtf8(listErr)
     var selectedDeviceReady = listCode == 0 && hdcListTargetsHasExpectedTarget(String.fromUtf8(listOut), config.selectedDeviceTarget)
     if (!selectedDeviceReady && containsText(config.selectedDeviceTarget, ":")) {
         receipt.commands.add("hdc-connect-explicit-target")
-        let (connectCode, _, _) = executeHapDeviceCommandWithTimeout(
+        let (connectCode, _, _) = executeHapPrntHdcForeground(
             config.hdcPath,
-            ["tconn", config.selectedDeviceTarget],
-            options.timeoutSeconds
+            ["tconn", config.selectedDeviceTarget]
         )
         if (connectCode == 0) {
             receipt.commands.add("hdc-list-targets-after-connect")
-            let (retryListCode, retryListOut, _) = executeHapDeviceCommandWithTimeout(
+            let (retryListCode, retryListOut, _) = executeHapPrntHdcForeground(
                 config.hdcPath,
-                ["list", "targets"],
-                options.timeoutSeconds
+                ["list", "targets"]
             )
             selectedDeviceReady = retryListCode == 0 && hdcListTargetsHasExpectedTarget(String.fromUtf8(retryListOut), config.selectedDeviceTarget)
         }
@@ -574,83 +583,95 @@ public func runHapPrnt(options: HapPrntOptions): String {
     if (!selectedDeviceReady) {
         receipt.status = "selected-device-not-ready"
         receipt.message = "selected HDC target was not present in `hdc list targets`: " + config.selectedDeviceTarget + hapPrntCommandDetail(listText)
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
+    }
+
+    if (receipt.appRestartRequested) {
+        receipt.commands.add("hdc-aa-force-stop-bundle")
+        receipt.deviceMutationActionTaken = true
+        let (stopCode, stopOut, stopErr) = executeHapPrntHdcForeground(
+            config.hdcPath,
+            hdcSelectedArgs(config, ["shell", "aa", "force-stop", config.bundle])
+        )
+        let stopText = String.fromUtf8(stopOut) + "\n" + String.fromUtf8(stopErr)
+        if (stopCode != 0 || hdcOutputLooksFailed(stopText)) {
+            receipt.status = "window-force-stop-failed"
+            receipt.message = "aa force-stop could not prepare a cold geometry launch" + hapPrntCommandDetail(stopText)
+            return finalizeHapPrntReceipt(receipt, config)
+        }
+        receipt.appForceStopTaken = true
     }
 
     receipt.commands.add("hdc-aa-start-window")
     receipt.deviceMutationActionTaken = true
     let launchArgs = hdcSelectedArgs(config, hapPrntLaunchArgs(config, layout))
-    let (launchCode, launchOut, launchErr) = executeHapDeviceCommandWithTimeout(config.hdcPath, launchArgs, options.timeoutSeconds)
+    let (launchCode, launchOut, launchErr) = executeHapPrntHdcForeground(config.hdcPath, launchArgs)
     let launchText = String.fromUtf8(launchOut) + "\n" + String.fromUtf8(launchErr)
     if (launchCode != 0 || hdcOutputLooksFailed(launchText)) {
         receipt.status = "window-launch-failed"
         receipt.message = "aa start did not accept the requested window geometry" + hapPrntCommandDetail(launchText)
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
 
     if (options.waitMilliseconds > 0) {
         sleep(Duration.millisecond * options.waitMilliseconds)
     }
     receipt.commands.add("hdc-pidof-bundle")
-    let (pidCode, pidOut, pidErr) = executeHapDeviceCommandWithTimeout(
+    let (pidCode, pidOut, pidErr) = executeHapPrntHdcForeground(
         config.hdcPath,
-        hdcSelectedArgs(config, ["shell", "pidof", config.bundle]),
-        options.timeoutSeconds
+        hdcSelectedArgs(config, ["shell", "pidof", config.bundle])
     )
     let pids = hapPrntPidList(String.fromUtf8(pidOut))
     if (pidCode != 0 || pids.size == 0) {
         receipt.status = "bundle-pid-unverified"
         receipt.message = "pidof did not bind the running process to bundle " + config.bundle + hapPrntCommandDetail(String.fromUtf8(pidErr))
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
     receipt.pid = pids[0]
 
     receipt.commands.add("hdc-wms-window-query")
-    let (wmsCode, wmsOut, wmsErr) = executeHapDeviceCommandWithTimeout(
+    let (wmsCode, wmsOut, wmsErr) = executeHapPrntHdcForeground(
         config.hdcPath,
-        hdcSelectedArgs(config, ["shell", "hidumper", "-s", "WindowManagerService", "-a", "-a"]),
-        options.timeoutSeconds
+        hdcSelectedArgs(config, ["shell", "hidumper", "-s", "WindowManagerService", "-a", "-a"])
     )
     if (wmsCode != 0) {
         receipt.status = "wms-query-failed"
         receipt.message = "WindowManagerService query failed" + hapPrntCommandDetail(String.fromUtf8(wmsErr))
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
     let wmsText = String.fromUtf8(wmsOut)
     let window = parseHapPrntWmsWindowForPids(wmsText, pids)
     if (!window.ok) {
         receipt.status = "wms-window-unverified"
         receipt.message = "WMS did not expose a positive rectangle for any PID returned by bundle " + config.bundle
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
     applyHapPrntActualWindow(receipt, window)
     receipt.wmsVerified = true
     receipt.remoteCapturePath = "/data/local/tmp/hapcli-prnt-" + window.pid + ".jpeg"
 
     receipt.commands.add("hdc-snapshot-display")
-    let (snapshotCode, snapshotOut, snapshotErr) = executeHapDeviceCommandWithTimeout(
+    let (snapshotCode, snapshotOut, snapshotErr) = executeHapPrntHdcForeground(
         config.hdcPath,
-        hdcSelectedArgs(config, ["shell", "snapshot_display", "-i", window.displayId.toString(), "-f", receipt.remoteCapturePath]),
-        options.timeoutSeconds
+        hdcSelectedArgs(config, ["shell", "snapshot_display", "-i", window.displayId.toString(), "-f", receipt.remoteCapturePath])
     )
     let snapshotText = String.fromUtf8(snapshotOut) + "\n" + String.fromUtf8(snapshotErr)
     if (snapshotCode != 0 || hdcOutputLooksFailed(snapshotText)) {
         receipt.status = "display-capture-failed"
         receipt.message = "snapshot_display failed for display " + window.displayId.toString() + hapPrntCommandDetail(snapshotText)
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
     receipt.displayCaptureTaken = true
 
     receipt.commands.add("hdc-receive-display")
-    let (recvCode, _, recvErr) = executeHapDeviceCommandWithTimeout(
+    let (recvCode, _, recvErr) = executeHapPrntHdcForeground(
         config.hdcPath,
-        hdcSelectedArgs(config, ["file", "recv", receipt.remoteCapturePath, receipt.displayPath]),
-        options.timeoutSeconds
+        hdcSelectedArgs(config, ["file", "recv", receipt.remoteCapturePath, receipt.displayPath])
     )
     if (recvCode != 0 || !exists(receipt.displayPath)) {
         receipt.status = "display-receive-failed"
         receipt.message = "captured display could not be received locally" + hapPrntCommandDetail(String.fromUtf8(recvErr))
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
 
     receipt.commands.add("crop-wms-window")
@@ -660,13 +681,13 @@ public func runHapPrnt(options: HapPrntOptions): String {
     if (cropCode != 0 || !exists(receipt.screenshotPath)) {
         receipt.status = "window-crop-failed"
         receipt.message = "fixed " + receipt.cropper + " crop failed" + hapPrntCommandDetail(String.fromUtf8(cropErr))
-        return finalizeHapPrntReceipt(receipt, config, options)
+        return finalizeHapPrntReceipt(receipt, config)
     }
     receipt.screenshotSha256 = hapPrntFileSha256(receipt.screenshotPath)
     receipt.ok = true
     receipt.status = "window-capture-complete"
     receipt.message = "window was requested first, then verified by PID/WMS before display capture and crop"
-    finalizeHapPrntReceipt(receipt, config, options)
+    finalizeHapPrntReceipt(receipt, config)
 }
 
 public func hapPrntExitCode(output: String): Int64 {
@@ -733,6 +754,8 @@ func baseHapPrntReceipt(options: HapPrntOptions, layout: HapPrntLayout, config: 
     receipt.displayPath = outputDir + "/display.jpeg"
     receipt.screenshotPath = outputDir + "/window.png"
     receipt.receiptPath = outputDir + "/receipt.json"
+    receipt.hdcTimeoutSecondsRequested = options.timeoutSeconds
+    receipt.appRestartRequested = !options.keepRunning
     receipt
 }
 
@@ -745,6 +768,9 @@ func appendHapPrntPlanCommands(
     commands.add(hapPrntCommandText(config.hdcPath, ["list", "targets"]))
     if (containsText(config.selectedDeviceTarget, ":")) {
         commands.add(hapPrntCommandText(config.hdcPath, ["tconn", config.selectedDeviceTarget]) + "  # only if the explicit target is absent")
+    }
+    if (receipt.appRestartRequested) {
+        commands.add(hapPrntCommandText(config.hdcPath, hdcSelectedArgs(config, ["shell", "aa", "force-stop", config.bundle])))
     }
     commands.add(hapPrntCommandText(config.hdcPath, hdcSelectedArgs(config, hapPrntLaunchArgs(config, layout))))
     commands.add("wait " + "<window-settle>")
@@ -816,14 +842,17 @@ func applyHapPrntActualWindow(receipt: HapPrntReceipt, window: HapPrntWindowRect
         receipt.requestedHeight == window.height
 }
 
-func finalizeHapPrntReceipt(receipt: HapPrntReceipt, config: HapHarmonyAdapterConfig, options: HapPrntOptions): String {
+func executeHapPrntHdcForeground(program: String, args: Array<String>): (Int64, Array<Byte>, Array<Byte>) {
+    executeWithOutput(program, args)
+}
+
+func finalizeHapPrntReceipt(receipt: HapPrntReceipt, config: HapHarmonyAdapterConfig): String {
     if (receipt.remoteCapturePath.size > 0) {
         receipt.commands.add("hdc-remove-owned-remote-capture")
         receipt.remoteCleanupAttempted = true
-        let (cleanupCode, _, _) = executeHapDeviceCommandWithTimeout(
+        let (cleanupCode, _, _) = executeHapPrntHdcForeground(
             config.hdcPath,
-            hdcSelectedArgs(config, ["shell", "rm", "-f", receipt.remoteCapturePath]),
-            options.timeoutSeconds
+            hdcSelectedArgs(config, ["shell", "rm", "-f", receipt.remoteCapturePath])
         )
         receipt.remoteCleanupSucceeded = cleanupCode == 0
     }
@@ -858,6 +887,11 @@ func renderHapPrntReceiptJson(receipt: HapPrntReceipt): String {
     out.append("  \"screenshotPath\": \"" + escapeJson(receipt.screenshotPath) + "\",\n")
     out.append("  \"screenshotSha256\": \"" + escapeJson(receipt.screenshotSha256) + "\",\n")
     out.append("  \"receiptPath\": \"" + escapeJson(receipt.receiptPath) + "\",\n")
+    out.append("  \"hdcExecutionMode\": \"" + escapeJson(receipt.hdcExecutionMode) + "\",\n")
+    out.append("  \"hdcTimeoutSecondsRequested\": " + receipt.hdcTimeoutSecondsRequested.toString() + ",\n")
+    out.append("  \"hdcTimeoutEnforced\": " + boolJson(receipt.hdcTimeoutEnforced) + ",\n")
+    out.append("  \"appRestartRequested\": " + boolJson(receipt.appRestartRequested) + ",\n")
+    out.append("  \"appForceStopTaken\": " + boolJson(receipt.appForceStopTaken) + ",\n")
     out.append("  \"screenshotScope\": \"wms-rect-crop-of-display\",\n")
     out.append("  \"windowOwnership\": \"" + if (receipt.wmsVerified) { "bundle-pid-wms-bound" } else { "unverified" } + "\",\n")
     out.append("  \"installedArtifactIdentityVerified\": false,\n")
@@ -877,6 +911,8 @@ func renderHapPrntReceiptJson(receipt: HapPrntReceipt): String {
     out.append("    \"aa window parameters require a 2in1 developer-mode device and a debug-signed app\",\n")
     out.append("    \"external display capture can contain windows that occlude the target rectangle\",\n")
     out.append("    \"a cropped screenshot is execution evidence, not visual acceptance or release approval\",\n")
+    out.append("    \"prnt keeps HDC in the foreground for server compatibility and does not enforce an outer process timeout\",\n")
+    out.append("    \"default capture force-stops the bundle before launch; --keep-running preserves current application state\",\n")
     out.append("    \"requested geometry is not substituted for the actual WMS rectangle\"\n")
     out.append("  ]\n")
     out.append("}")

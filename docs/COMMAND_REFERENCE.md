@@ -74,6 +74,7 @@ handles the window before the screenshot:
 
 ```text
 validate explicit device and layout
+-> force-stop the configured bundle unless --keep-running is set
 -> aa start with --wl/--wt/--ww/--wh
 -> pidof the configured bundle
 -> query WindowManagerService
@@ -115,10 +116,23 @@ the actual rectangle is always used for cropping. `--cropper auto` selects the
 fixed macOS `sips` adapter first and otherwise ImageMagick `magick`. Arbitrary
 crop commands are not accepted.
 
+By default, `prnt` force-stops the configured bundle before `aa start`; a cold
+ability launch is required for the requested geometry to take effect reliably.
+Use `--keep-running` (alias `--no-force-stop`) only for a second capture after
+automation has navigated the already-sized application to a specific UI state.
+The receipt exposes `appRestartRequested` and `appForceStopTaken`.
+
 The `aa` window arguments are platform-constrained: they require a 2in1 device
 in developer mode and a debug-signed application. The external screenshot is a
 crop of a full-display capture, so another window can still occlude the target.
 The result is execution evidence, not visual acceptance or release approval.
+
+`prnt` executes each fixed HDC argv in the foreground. This avoids an observed
+HDC server failure when the client is backgrounded by a shell timeout wrapper.
+For this lane, `--timeout-seconds` remains visible in the receipt as the
+requested bound, while `hdcTimeoutEnforced=false` states that HapCLI does not
+apply an outer process timeout. HDC transport behavior remains the stopline;
+other HapCLI device/build executors keep their existing timeout policies.
 
 ## Output Modes
 
