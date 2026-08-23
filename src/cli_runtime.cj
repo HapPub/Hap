@@ -88,6 +88,12 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         println(output)
         return hapDeviceCommandExitCode(output)
     }
+    if (command == "prnt") {
+        let options = resolveHapPrntOptions(commandLine, 2)
+        let output = if (options.plan) { renderHapPrntPlanJson(options) } else { runHapPrnt(options) }
+        println(output)
+        return hapPrntExitCode(output)
+    }
     if (command == "build") {
         if (shouldUseAutoProjectActionForBuild(commandLine, 2)) {
             let options = resolveProjectActionOptions("build", commandLine, 2)
@@ -675,6 +681,12 @@ public func renderHapCliHelp(): String {
     "  device set --alias <name> --platform <kind> --target <id>\n" +
     "  device set --default <alias> | --rename old:new | --delete <alias>\n" +
     "                                                     Manage the same registry non-interactively for agents/CI\n" +
+    "  prnt --project <path> --device <target|alias>     Start a HarmonyOS window, verify WMS, capture and crop it\n" +
+    "       --layoutType Phone --ratio 16:9              Phone: 16:9, 18:9, 21:9\n" +
+    "       --layoutType Tablet --ratio Fold4:3          Tablet/Fold: Fold4:3, Fold√2:1, Fold1.15:1, 16:9, 3:2, 7:5\n" +
+    "       --layoutType PC --ratio 2in1                 PC: 2in1; trible requires explicit --width and --height\n" +
+    "       [--left N --top N] [--output-dir <path>]     Resize first; crop the PID-bound actual WMS rectangle\n" +
+    "       [--bundle B --ability A --module M] [--plan] Override inference or preview the fixed command chain\n" +
     "  build --plan --platform <kind>                   Plan fixed adapter build command templates without executing\n" +
     "  build --platform harmonyos --execute-reviewed    Run fixed HarmonyOS adapter only after review token and receipt\n" +
     "  test --project <path> [--lint]                   Plan fixed adapter test command templates without executing\n" +

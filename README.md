@@ -95,6 +95,9 @@ from native jobs that completed build, test, checksum, and `hap version` gates.
   ordering guidance.
 - Build, install, launch, and verify HarmonyOS applications through fixed
   `hvigor` and `hdc` commands.
+- Start a debug-signed HarmonyOS window at a named Phone/Tablet/Fold/PC layout,
+  verify its actual PID-bound WMS rectangle, and crop a structured screenshot
+  receipt from the full display.
 - Remember reviewed HarmonyOS device aliases and recent USB-proven wireless
   endpoints without scanning the local network.
 - Run Compose Multiplatform desktop applications and build/install/launch iOS
@@ -150,10 +153,20 @@ hap device --project .
 hap dev --project .
 hap dev --project . --device demo-phone
 hap dev --project . --device 192.0.2.40:5555 -v
+hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
+hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
 
 `hap dev` auto-selects the workflow when exactly one supported project type is
 present. Use `--platform` only for mixed or ambiguous directories.
+
+`hap prnt` resolves and requests the window size before it queries WMS and
+captures the display. Phone supports `16:9`, `18:9`, and `21:9`; Tablet/Fold
+supports `Fold4:3`, `Fold√2:1`, `Fold1.15:1`, `16:9`, `3:2`, and `7:5`; PC
+supports `2in1`. The literal `trible` profile is accepted only with explicit
+`--width` and `--height`, so HapCLI does not invent a ratio. See the
+[command reference](docs/COMMAND_REFERENCE.md#harmonyos-window-capture) for
+platform and screenshot-ownership limits.
 
 ### Kotlin Multiplatform
 

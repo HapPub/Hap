@@ -9,6 +9,7 @@ by the executable.
 | `project detect` | Detect Cangjie/cjpm, HarmonyOS, iOS, and KMP project shapes. |
 | `device`, `device set` | List relevant devices and manage local aliases/defaults. |
 | `build`, `test`, `dev`, `push` | Plan or execute fixed project adapters. |
+| `prnt` | Start a HarmonyOS app at a requested size, bind its PID to WMS, capture the display, and crop the actual window rectangle. |
 | `inspect-cjpm`, `plan-switch`, `apply-switch` | Inspect and review CJPM dependency profile changes. |
 | `record cangjie.stdx` | Store a reusable stdx target profile from a known-good project. |
 | `doctorfix cangjie.stdx` | Plan or apply a backed-up stdx target repair. |
@@ -65,6 +66,59 @@ are transport candidates only; manifest SHA-256 remains the authority. A cache
 hit requires version-and-checksum-bound completion markers but does not re-hash
 all extracted files on every build. OpenHarmony native sysroot, signing,
 runtime, and device proof remain separate prerequisites.
+
+## HarmonyOS Window Capture
+
+`hap prnt` is an execution-evidence helper for responsive layouts. It always
+handles the window before the screenshot:
+
+```text
+validate explicit device and layout
+-> aa start with --wl/--wt/--ww/--wh
+-> pidof the configured bundle
+-> query WindowManagerService
+-> snapshot the WMS display
+-> receive the full display
+-> crop the PID-bound WMS rectangle
+-> write receipt.json
+```
+
+Examples:
+
+```bash
+hap prnt --project . --device my-pc \
+  --layoutType Phone --ratio 18:9 --plan
+
+hap prnt --project . --device 192.0.2.40:5555 \
+  --layoutType Tablet --ratio Fold4:3 \
+  --left 100 --top 100 --output-dir ./.hapData/prnt/tablet-fold
+
+hap prnt --project . --device my-pc \
+  --layoutType PC --ratio trible \
+  --width 2400 --height 900
+```
+
+`--layoutType Family/Variant` is accepted as a shorthand, for example
+`Phone/21:9`, `Tablet/Fold√2:1`, or `PC/2in1`.
+
+| Family | Variants | Default requested pixels |
+| --- | --- | --- |
+| Phone | `16:9`, `18:9`, `21:9` | `516x918`, `516x1032`, `516x1204` |
+| Tablet/Fold | `Fold4:3`, `Fold√2:1`, `Fold1.15:1` | `1200x900`, `1273x900`, `1035x900` |
+| Tablet | `16:9`, `3:2`, `7:5` | `1600x900`, `1350x900`, `1260x900` |
+| PC | `2in1` | `1440x900` |
+| PC | `trible` | No guessed ratio; requires `--width` and `--height`. |
+
+Supplying both `--width` and `--height` overrides a preset's default pixels.
+The receipt keeps both the requested rectangle and the actual WMS rectangle;
+the actual rectangle is always used for cropping. `--cropper auto` selects the
+fixed macOS `sips` adapter first and otherwise ImageMagick `magick`. Arbitrary
+crop commands are not accepted.
+
+The `aa` window arguments are platform-constrained: they require a 2in1 device
+in developer mode and a debug-signed application. The external screenshot is a
+crop of a full-display capture, so another window can still occlude the target.
+The result is execution evidence, not visual acceptance or release approval.
 
 ## Output Modes
 

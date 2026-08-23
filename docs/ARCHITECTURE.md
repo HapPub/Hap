@@ -27,6 +27,12 @@ Execution-capable commands construct fixed argv for known tools such as `cjpm`,
 arbitrary shell command text. Semantic output checks are applied when a tool can
 return exit code `0` while reporting failure in its output.
 
+The HarmonyOS `prnt` adapter is a strict sequence rather than a generic screen
+tool: it requests geometry through `aa start`, resolves the bundle PID, binds
+that PID to the WindowManagerService table, captures the resulting display, and
+crops only the actual WMS rectangle with a fixed `sips` or ImageMagick adapter.
+Requested and actual geometry remain separate receipt fields.
+
 ### Local private state
 
 Configuration, stdx records, device aliases, receipts, logs, and trusted device

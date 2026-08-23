@@ -84,6 +84,8 @@ hap help
 - 从可构建项目记录 stdx 目标配置，在其他项目中规划或写入带备份的修复。
 - 执行固定的 `cjpm build` 和 `cjpm bundle`，提供受限的环境诊断、一次修复重试和中心仓依赖发布顺序提示。
 - 通过固定的 `hvigor` 与 `hdc` 命令构建、安装、启动和验证 HarmonyOS 应用。
+- 按 Phone/Tablet/Fold/PC 布局先请求 HarmonyOS 窗口尺寸，再用 bundle PID
+  绑定 WMS 实际矩形，截取 display 并生成结构化窗口截图回执。
 - 保存经过确认的 HarmonyOS 设备别名和最近一次 USB 证明的无线端点，不扫描局域网。
 - 运行 Compose Multiplatform 桌面应用；在主机已有有效 Apple 签名资产时构建、安装和启动 iOS 应用。
 - 诊断 GitHub Actions 并生成可审查的 CI 脚本，CLI 不直接修改工作流文件。
@@ -116,7 +118,15 @@ hap device --project .
 hap dev --project .
 hap dev --project . --device demo-phone
 hap dev --project . --device 192.0.2.40:5555 -v
+hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
+hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
+
+`hap prnt` 严格按“窗口参数 → PID/WMS 实际矩形 → display 截图 → 实际矩形裁剪”
+执行。Phone 支持 `16:9`、`18:9`、`21:9`；Tablet/Fold 支持
+`Fold4:3`、`Fold√2:1`、`Fold1.15:1`、`16:9`、`3:2`、`7:5`；PC 支持
+`2in1`。字面值 `trible` 仅在同时提供 `--width` 和 `--height` 时接受，
+避免工具擅自猜比例。外部截图仍可能包含遮挡物，不能代替视觉验收。
 
 当目录中只有一种受支持项目时，`hap dev` 会自动选择流程。只有混合目录或无法明确识别时，才需要 `--platform`。
 
