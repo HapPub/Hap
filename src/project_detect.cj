@@ -96,6 +96,16 @@ public func renderProjectDetectJson(options: HapProjectDetectOptions): String {
     out.append("  \"commandCandidates\": ")
     appendProjectJsonStringArray(out, selected.commandCandidates)
     out.append(",\n")
+    out.append("  \"packageProvider\": {\"id\": \"cangjie-harmonyos-package-provider\", \"status\": \"")
+    out.append(if (selected.projectKind == "cangjie-harmonyos") { "provider-required" } else { "not-applicable" })
+    out.append("\", \"required\": " + boolJson(selected.projectKind == "cangjie-harmonyos") + ", \"executionAvailable\": false, \"receiptRequired\": true, \"actions\": [\"inspect\", \"build\", \"package\"]},\n")
+    out.append("  \"cangjieHarmony\": ")
+    if (selected.projectKind == "cangjie-harmonyos") {
+        renderCangjieHarmonyInspectionJson(out, inspectCangjieHarmonyProject(options.project), "  ")
+    } else {
+        out.append("null")
+    }
+    out.append(",\n")
     out.append("  \"availablePlatforms\": ")
     appendProjectJsonStringArray(out, selection.availablePlatforms)
     out.append(",\n")
@@ -114,6 +124,7 @@ public func renderProjectDetectJson(options: HapProjectDetectOptions): String {
     out.append("  \"nextAllowed\": [\n")
     out.append("    \"run hap dev/build/test from a supported project root without --platform when only one project type is detected\",\n")
     out.append("    \"add --platform harmonyos|cangjie|ios|kmp when availablePlatforms has more than one item\",\n")
+    out.append("    \"use --platform cangjie-harmonyos for a pure Cangjie HarmonyOS package workspace\",\n")
     out.append("    \"use hap project detect --project <path> before mutating configs when detection is unclear\",\n")
     out.append("    \"hap push requires explicit artifact or trusted last-build memory\"\n")
     out.append("  ],\n")
@@ -129,10 +140,36 @@ public func renderProjectDetectJson(options: HapProjectDetectOptions): String {
 func detectProjectCandidates(project: String): ArrayList<HapProjectDetection> {
     let candidates = ArrayList<HapProjectDetection>()
     candidates.add(detectHarmonyProject(project))
+    candidates.add(detectCangjieHarmonyProject(project))
     candidates.add(detectIosProject(project))
     candidates.add(detectKmpProject(project))
     candidates.add(detectCangjieProject(project))
     candidates
+}
+
+func detectCangjieHarmonyProject(project: String): HapProjectDetection {
+    let d = HapProjectDetection()
+    d.projectKind = "cangjie-harmonyos"
+    d.buildSystem = "cjpm-harmony-package"
+    d.deviceTool = "hdc"
+    let inspection = inspectCangjieHarmonyProject(project)
+    if (inspection.recognized) {
+        d.signals.add("cjpm.toml:[app]")
+        d.signals.add("cjpm.toml:[workspace]")
+        d.signals.add("cjpm.toml:runtime-OS=HarmonyOS")
+        d.score = 12
+        for (module in inspection.modules) {
+            d.signals.add(module.member + ":" + module.kind)
+            if (module.status == "module-ready") {
+                d.score += 2
+            }
+        }
+        d.adapterCandidates.add("cangjie-harmonyos-package-provider")
+        d.commandCandidates.add("hap build --platform cangjie-harmonyos --plan")
+        d.commandCandidates.add("hap test --platform cangjie-harmonyos --plan")
+    }
+    finalizeConfidence(d)
+    d
 }
 
 func selectProjectDetection(candidates: ArrayList<HapProjectDetection>, platform: String): HapProjectDetection {
@@ -283,7 +320,9 @@ func detectCangjieProject(project: String): HapProjectDetection {
     d.projectKind = "cangjie"
     d.buildSystem = "cjpm"
     d.deviceTool = "none"
-    addSignalIfExists(d, project, "cjpm.toml", 5)
+    if (!inspectCangjieHarmonyProject(project).recognized) {
+        addSignalIfExists(d, project, "cjpm.toml", 5)
+    }
     addDirectorySuffixSignals(d, project, ".cjpm.toml", 3)
     if (d.score > 0) {
         d.adapterCandidates.add("cangjie-cjpm")
@@ -354,6 +393,9 @@ func normalizeProjectPlatform(platform: String): String {
         case "harmonyos" => "harmonyos"
         case "openharmony" => "harmonyos"
         case "ohos" => "harmonyos"
+        case "cangjie-harmonyos" => "cangjie-harmonyos"
+        case "cangjie-ohos" => "cangjie-harmonyos"
+        case "cjpm-harmonyos" => "cangjie-harmonyos"
         case "ios" => "ios"
         case "kmp" => "kotlin-multiplatform"
         case "kotlin" => "kotlin-multiplatform"

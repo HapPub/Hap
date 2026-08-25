@@ -79,7 +79,8 @@ hap help
 
 ## 核心能力
 
-- 识别仓颉/cjpm、HarmonyOS、iOS 和 Compose Multiplatform 项目。
+- 区分普通仓颉/cjpm、仓颉原生 HarmonyOS 打包工作区、hvigor HarmonyOS、iOS 和 Compose Multiplatform 项目。
+- 在选择打包 Provider 之前，只读检查仓颉原生 HarmonyOS 的 `[app]` / `[workspace]` 与 HAP/HSP/HAR 模块图。
 - 检查 `cjpm.toml`，诊断本地 `path` 依赖与远端 `git` 依赖的差异。
 - 从可构建项目记录 stdx 目标配置，在其他项目中规划或写入带备份的修复。
 - 执行固定的 `cjpm build` 和 `cjpm bundle`，提供受限的环境诊断、一次修复重试和中心仓依赖发布顺序提示。
@@ -122,6 +123,19 @@ hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
 hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
 
+纯仓颉 HarmonyOS 工作区会被识别为独立的 `cangjie-harmonyos`，不会再折叠成
+普通 `cangjie`，也不会与 hvigor 工程混为一谈：
+
+```bash
+hap project detect --project ./native-harmony-app
+hap build --project ./native-harmony-app --platform cangjie-harmonyos --plan
+```
+
+检测器读取根清单的 `[app]` / `[workspace]`，以及成员清单的 `[hap]`、
+`[hsp]`、`[har]`。打包能力默认 fail-close：在独立审计、固定 argv 且能输出
+结构化回执的 Provider 接入前，构建计划返回 `package-provider-required`；这一
+入口不会静默采用外部打包器，也不会生成、签名、安装或启动 HAP。
+
 `hap prnt` 严格按“窗口参数 → PID/WMS 实际矩形 → display 截图 → 实际矩形裁剪”
 执行。Phone 支持 `16:9`、`18:9`、`21:9`；Tablet/Fold 支持
 `Fold4:3`、`Fold√2:1`、`Fold1.15:1`、`16:9`、`3:2`、`7:5`；PC 支持
@@ -156,6 +170,7 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | OHOS ARM64/AMD64 | nightly 交叉构建和链接验证可用 | 产物尚未在 OHOS 设备上执行运行时自检，并依赖兼容的目标端仓颉运行时。 |
 | Windows ARM64/x86 | 已记录上游缺口 | 当前镜像的仓颉发布没有匹配的原生宿主 SDK，因此 HapCLI 不会把其他架构改名后声称支持。 |
 | HarmonyOS 应用 | 已有真实构建、安装和启动流程 | 需要可用的 DevEco 工具链、已授权设备和有效签名配置。 |
+| 仓颉原生 HarmonyOS 包 | 已有检测、HAP/HSP/HAR 模块图与 Provider 计划 | 在受审固定 Provider 接入前，包生成保持 fail-close。 |
 | macOS KMP Desktop | 已验证真实 Gradle 构建与运行 | 其他桌面平台仍需单独现场验证。 |
 | KMP iOS/iPadOS | 已实现构建、安装和启动 | Apple 账号、证书、描述文件、开发团队、已配对设备和 CoreDevice 状态仍由主机提供。 |
 | Android 设备列表 | 支持只读 ADB 识别 | 尚未实现 APK 构建和安装编排。 |

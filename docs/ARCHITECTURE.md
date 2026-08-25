@@ -20,6 +20,13 @@ profiles, toolchain providers, CI workflow diagnosis, and release metadata are
 read-only by default. Their output is structured so humans and automation can
 review the same facts.
 
+The Cangjie-native HarmonyOS inspector is a separate detection lane. It reads
+the root app/workspace contract and bounded member manifests, then projects an
+HAP/HSP/HAR module graph. Generic Cangjie and hvigor HarmonyOS remain separate
+project kinds. The corresponding package-provider surface is contract-first and
+plan-only: until a reviewed fixed provider exists, plans report
+`package-provider-required` and cannot route into the hvigor/HDC executor.
+
 ### Fixed execution adapters
 
 Execution-capable commands construct fixed argv for known tools such as `cjpm`,

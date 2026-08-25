@@ -85,7 +85,10 @@ from native jobs that completed build, test, checksum, and `hap version` gates.
 
 ## Core Capabilities
 
-- Detect Cangjie/cjpm, HarmonyOS, iOS, and Compose Multiplatform project shapes.
+- Detect generic Cangjie/cjpm, Cangjie-native HarmonyOS package workspaces,
+  hvigor HarmonyOS, iOS, and Compose Multiplatform project shapes.
+- Inspect Cangjie-native HarmonyOS `[app]` / `[workspace]` manifests and expose
+  their HAP/HSP/HAR module graph before any package provider is selected.
 - Inspect `cjpm.toml` dependency profiles and diagnose local `path` versus
   remote `git` drift.
 - Record a known-good stdx target profile and plan or apply a backed-up repair
@@ -157,6 +160,21 @@ hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
 hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
 
+Pure Cangjie HarmonyOS workspaces are reported as `cangjie-harmonyos`, distinct
+from hvigor projects and ordinary Cangjie packages:
+
+```bash
+hap project detect --project ./native-harmony-app
+hap build --project ./native-harmony-app --platform cangjie-harmonyos --plan
+```
+
+The detector reads the root `[app]` and `[workspace]` tables plus member
+`[hap]`, `[hsp]`, and `[har]` tables. Packaging is deliberately fail-closed:
+the build plan returns `package-provider-required` until a separately reviewed,
+fixed-argv provider with structured receipts is available. HapCLI does not
+silently adopt an external packager, generate HAP bytes, sign, install, or
+launch from this plan-only surface.
+
 `hap dev` auto-selects the workflow when exactly one supported project type is
 present. Use `--platform` only for mixed or ambiguous directories.
 
@@ -194,6 +212,7 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | OHOS ARM64/AMD64 | Nightly cross-build and link verification available | The artifacts are not runtime-smoked on an OHOS device and require a compatible target Cangjie runtime. |
 | Windows ARM64/x86 | Upstream gap recorded | The mirrored Cangjie release has no matching native host SDK, so HapCLI does not relabel another architecture as support. |
 | HarmonyOS applications | Real build/install/launch workflow available | Requires a working DevEco toolchain, authorized device, and valid signing profile. |
+| Cangjie-native HarmonyOS packages | Detection, HAP/HSP/HAR module graph, and provider plan available | Package generation remains fail-closed until a reviewed fixed provider is integrated. |
 | KMP desktop on macOS | Real Gradle build/run verified | Other desktop hosts require separate field verification. |
 | KMP iOS/iPadOS | Build/install/launch implementation available | Apple account, certificate, profile, development team, paired device, and CoreDevice readiness remain host prerequisites. |
 | Android device listing | Read-only ADB discovery available | APK build/install orchestration is not implemented. |

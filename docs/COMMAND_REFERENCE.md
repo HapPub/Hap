@@ -6,7 +6,7 @@ by the executable.
 
 | Family | Purpose |
 | --- | --- |
-| `project detect` | Detect Cangjie/cjpm, HarmonyOS, iOS, and KMP project shapes. |
+| `project detect` | Detect generic Cangjie/cjpm, Cangjie-native HarmonyOS package, hvigor HarmonyOS, iOS, and KMP project shapes. |
 | `device`, `device set` | List relevant devices and manage local aliases/defaults. |
 | `build`, `test`, `dev`, `push` | Plan or execute fixed project adapters. |
 | `prnt` | Start a HarmonyOS app at a requested size, bind its PID to WMS, capture the display, and crop the actual window rectangle. |
@@ -66,6 +66,26 @@ are transport candidates only; manifest SHA-256 remains the authority. A cache
 hit requires version-and-checksum-bound completion markers but does not re-hash
 all extracted files on every build. OpenHarmony native sysroot, signing,
 runtime, and device proof remain separate prerequisites.
+
+## Cangjie-Native HarmonyOS Package Workspaces
+
+`hap project detect` recognizes a pure Cangjie HarmonyOS workspace when its
+root `cjpm.toml` contains `[app]`, `[workspace]`, and
+`runtime-OS = "HarmonyOS"`. It reads `build-members` (or `members` as a
+fallback), rejects member paths that could escape the project root, and reports
+member `[hap]`, `[hsp]`, and `[har]` tables as a module graph.
+
+```bash
+hap project detect --project . --platform cangjie-harmonyos
+hap build --project . --platform cangjie-harmonyos --plan
+```
+
+The build plan names three fixed provider stages: `inspect`, `cjpm build`, and
+`package`. It returns `ok=false`, `status=package-provider-required`, and
+`executionAvailable=false`; the provider commands are templates, not executed
+argv. `--execute-reviewed` also fails closed for this adapter. Package byte
+generation, signing, HDC installation, launch, and external provider adoption
+require separate implementation and acceptance.
 
 ## HarmonyOS Window Capture
 

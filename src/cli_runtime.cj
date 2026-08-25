@@ -67,7 +67,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "project") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap project detect --project <path> [--platform auto|harmonyos|ios|kmp|cangjie]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap project detect --project <path> [--platform auto|harmonyos|cangjie-harmonyos|ios|kmp|cangjie]"))
             return 2
         }
         let action = commandLine[2]
@@ -98,9 +98,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         if (shouldUseAutoProjectActionForBuild(commandLine, 2)) {
             let options = resolveProjectActionOptions("build", commandLine, 2)
             if (options.executeReviewed) {
-                let output = runHarmonyReviewedExecution(options)
-                println(output)
-                return projectActionExecutionExitCodeFromJson(output)
+                if (shouldUseHarmonyLocalDevExecution(options)) {
+                    let output = runHarmonyReviewedExecution(options)
+                    println(output)
+                    return projectActionExecutionExitCodeFromJson(output)
+                }
+                println(renderProjectActionPlanJson(options))
+                return 3
             }
             println(renderProjectActionPlanJson(options))
             return 0
@@ -119,9 +123,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     if (command == "test") {
         let options = resolveProjectActionOptions("test", commandLine, 2)
         if (options.executeReviewed) {
-            let output = runHarmonyReviewedExecution(options)
-            println(output)
-            return projectActionExecutionExitCodeFromJson(output)
+            if (shouldUseHarmonyLocalDevExecution(options)) {
+                let output = runHarmonyReviewedExecution(options)
+                println(output)
+                return projectActionExecutionExitCodeFromJson(output)
+            }
+            println(renderProjectActionPlanJson(options))
+            return 3
         }
         println(renderProjectActionPlanJson(options))
         return 0
@@ -188,9 +196,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     if (command == "push") {
         let options = resolveProjectActionOptions("push", commandLine, 2)
         if (options.executeReviewed) {
-            let output = runHarmonyReviewedExecution(options)
-            println(output)
-            return projectActionExecutionExitCodeFromJson(output)
+            if (shouldUseHarmonyLocalDevExecution(options)) {
+                let output = runHarmonyReviewedExecution(options)
+                println(output)
+                return projectActionExecutionExitCodeFromJson(output)
+            }
+            println(renderProjectActionPlanJson(options))
+            return 3
         }
         println(renderProjectActionPlanJson(options))
         return 0
@@ -674,7 +686,7 @@ public func renderHapCliHelp(): String {
     "  inspect-cjpm <cjpm.toml>                         Inspect Cangjie cjpm dependency profile and emit JSON\n" +
     "  plan-switch <cjpm.toml> <profiles.toml> <target>  Preview a read-only dependency profile switch plan\n" +
     "  apply-switch <cjpm.toml> <profiles.toml> <target> Write reviewed switch output and receipt, never in-place by default\n" +
-    "  project detect --project <path>                  Detect HarmonyOS/iOS/KMP/Cangjie project adapter candidates\n" +
+    "  project detect --project <path>                  Detect HarmonyOS/Cangjie-HarmonyOS/iOS/KMP/Cangjie adapter candidates\n" +
     "  device [--project <path>] [--all] [--json]      List project-relevant HDC/ADB/CoreDevice targets and aliases\n" +
     "         [--no-probe] [--timeout-seconds N]       Bound fixed backend probes or read aliases without probing\n" +
     "  device set                                      Open keyboard device alias/default manager\n" +
