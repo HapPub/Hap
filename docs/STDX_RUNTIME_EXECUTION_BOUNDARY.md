@@ -4,7 +4,9 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 
 ## Roles
 
-- `hap`: inspect, plan, diagnose, emit reviewed recipes, emit receipts, and reject direct stdx/runtime execution requests.
+- `hap`: inspect, plan, diagnose, emit reviewed recipes and receipts, and run
+  the explicit checksum-gated `install cangjie|cangjie-sdk|cangjie-stdx`
+  package surface inside Hap private storage.
 - `hapup`: bootstrap or install reviewed assets after checksum and review gates.
 - hosted CI / sandbox shell: execute reviewed scripts and upload receipts after workflow review.
 - `cjpm`: remains the build tool; HapCLI does not replace it.
@@ -13,6 +15,10 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 
 - `hap fetch reviewed-recipe` emits reviewed bash text only.
 - Passing `--execute` or `--run` to `hap fetch reviewed-recipe` is rejected with `direct-execute-not-supported`.
+- `hap install cangjie*` is a separate explicit package transaction. It accepts
+  only supported package/version/target inputs, requires SHA-256 authority,
+  uses a Hap-private or OS-temporary install root, and writes structured action
+  truth. `--plan` performs no catalog lookup, download, extraction, or write.
 - Fetch/deploy receipts must record source URL, target, version, checksum status, install root, and mutation truth.
 - `cjpm.toml` mutation is separate from stdx/runtime fetch/deploy.
 - Global SDK paths are not mutated by default.
@@ -22,5 +28,6 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 - no SDK version manager
 - no official package-manager status
 - no silent online lookup
-- no hidden runtime/stdx install inside flagship `hap`
+- no install through `get`, `doctor`, or `fetch reviewed-recipe`; package bytes
+  are installed only through an explicit `hap install cangjie*` request
 - no release certification from a fetch/deploy receipt alone

@@ -9,6 +9,13 @@ fail_test() {
   exit 1
 }
 
+require_text() {
+  file=$1
+  text=$2
+  message=$3
+  grep -Fq -- "$text" "$file" || fail_test "$message"
+}
+
 [ -f "$ROOT/LICENSE" ] || fail_test "LICENSE is missing"
 [ -f "$ROOT/README.md" ] || fail_test "English README is missing"
 [ -f "$ROOT/README.zh-CN.md" ] || fail_test "Chinese README is missing"
@@ -20,6 +27,30 @@ grep -q '\[简体中文\](README.zh-CN.md)' "$ROOT/README.md" || fail_test "Engl
 grep -q '\[Русский\](README.ru.md)' "$ROOT/README.md" || fail_test "English README does not link Russian"
 grep -q '\[English\](README.md)' "$ROOT/README.zh-CN.md" || fail_test "Chinese README does not link English"
 grep -q '\[English\](README.md)' "$ROOT/README.ru.md" || fail_test "Russian README does not link English"
+
+for readme in README.md README.zh-CN.md README.ru.md; do
+  require_text "$ROOT/$readme" 'hap install cangjie@nightly' \
+    "$readme does not expose dynamic nightly installation"
+  require_text "$ROOT/$readme" 'https://cli.hap.pub/manifests/cangjie-install-v1.json' \
+    "$readme does not state the schema-gated supplementary dictionary"
+  require_text "$ROOT/$readme" '1.0.5' \
+    "$readme does not state the pinned LTS"
+  require_text "$ROOT/$readme" '1.1.3' \
+    "$readme does not state the exact STS"
+done
+
+require_text "$ROOT/docs/COMMAND_REFERENCE.md" 'nightly` dynamically resolves the newest' \
+  "command reference does not explain dynamic nightly resolution"
+require_text "$ROOT/docs/STDX_RUNTIME_EXECUTION_BOUNDARY.md" 'explicit `hap install cangjie*` request' \
+  "stdx/runtime boundary does not distinguish explicit package installation"
+require_text "$ROOT/src/cli_runtime.cj" 'nightly resolves dynamically' \
+  "CLI help does not expose dynamic nightly behavior"
+require_text "$ROOT/src/cangjie_dynamic_catalog.cj" 'https://cli.hap.pub/manifests/cangjie-install-v1.json' \
+  "dynamic catalog source and public dictionary URL have drifted"
+
+if grep -Fq -- 'no hidden runtime/stdx install inside flagship' "$ROOT/docs/STDX_RUNTIME_EXECUTION_BOUNDARY.md"; then
+  fail_test "stdx/runtime boundary still denies the explicit package install surface"
+fi
 
 sh -n "$ROOT/release/hapup.sh"
 
