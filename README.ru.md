@@ -93,6 +93,7 @@ hap help
 - Хранение подтвержденных псевдонимов устройств HarmonyOS и последних беспроводных адресов, доказанных через USB, без сканирования локальной сети.
 - Запуск настольных приложений Compose Multiplatform и сборка, установка и запуск iOS-приложений при наличии действующих средств подписи Apple на хосте.
 - Диагностика GitHub Actions и создание проверяемых CI-сценариев без изменения workflow-файлов самим CLI.
+- Установка официальных пакетов Cangjie SDK и stdx в приватный каталог Hap с точной версией, фиксированным LTS и обязательной проверкой SHA-256.
 - Краткий вывод по умолчанию; `-v` или `--verbose` включает структурированные подробности, а `--write-receipt` создает явный отчет для агента или CI.
 
 ## Типовые сценарии
@@ -105,16 +106,26 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-Обе команды `get` только формируют план и не выполняют загрузку или установку.
-Для `global` сначала используется побайтовое зеркало
-[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а для `zh-cn`
-сначала используется исходный release GitCode. В обоих встроенных маршрутах
-источником SHA-256 служит `manifest.v1.json` зеркала. Явный
-`--provider-url` остается пользовательским и не получает скрытого fallback.
+`cangjie` — псевдоним `cangjie-sdk`; `cangjie-stdx` остается отдельным пакетом.
+Версия по умолчанию, `@latest` и `@lts` фиксируются на LTS `1.0.5`, а
+`@1.1.3` остается точной STS-линией. Установка идет в `~/.hap/toolchains`;
+явный корень допускается только внутри `HOME/.hap` или временного каталога ОС.
+`--plan` не загружает и не изменяет файлы.
+
+Старые команды `get` остаются планами для nightly. Для стабильной установки
+`global` сначала использует побайтовое зеркало
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а `zh-cn`
+добавляет разрешенные ускоряющие префиксы к тому же URL, затем использует
+прямое зеркало и официальный источник. Ускоритель не является источником
+контрольной суммы.
 
 ### Разработка приложений HarmonyOS
 

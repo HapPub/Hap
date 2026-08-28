@@ -96,6 +96,9 @@ from native jobs that completed build, test, checksum, and `hap version` gates.
 - Run fixed `cjpm build` and `cjpm bundle` actions with bounded environment
   diagnosis, one reviewed repair attempt, and central-repository dependency
   ordering guidance.
+- Install official Cangjie SDK or stdx release packages into Hap private
+  storage with exact package specs, pinned LTS resolution, SHA-256 gates, and
+  no project, shell profile, or system SDK mutation.
 - Build, install, launch, and verify HarmonyOS applications through fixed
   `hvigor` and `hdc` commands.
 - Start a debug-signed HarmonyOS window at a named Phone/Tablet/Fold/PC layout,
@@ -120,16 +123,28 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-The two `get` commands emit plans; they do not download or install from this
-surface. `global` routes to the byte-preserving
+`cangjie` is an alias for `cangjie-sdk`; `cangjie-stdx` remains a separate
+package. An omitted version, `@latest`, or `@lts` resolves to the pinned latest
+LTS (`1.0.5`); `@1.1.3` remains the exact STS line. Installs default to
+`~/.hap/toolchains`; explicit roots are restricted to `HOME/.hap` or an OS
+temporary directory. `--plan` performs no download or filesystem write.
+
+The two older `get` commands remain plan-only nightly acquisition surfaces.
+For real stable/LTS installs, `global` routes to the byte-preserving
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror) first, while
-`zh-cn` routes to the original GitCode release first. Both built-in routes use
-the mirror's `manifest.v1.json` as their SHA-256 authority. An explicit
-`--provider-url` stays custom and has no silent fallback.
+`zh-cn` prepends allowlisted acceleration prefixes to the same mirror, then
+falls back to the direct mirror and official source. Accelerators never become
+checksum authorities. The catalog is designed for
+`https://cli.hap.pub/manifests/cangjie-install-v1.json`; exact mirror manifests
+remain the byte-level SHA-256 authority.
 
 For reviewed GitHub Actions and other hosted runners, the repository provides
 a real mirror-to-environment bridge:

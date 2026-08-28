@@ -355,10 +355,16 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "install") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap install <doctor|replace-plan|restore-plan|receipt-readback> ..."))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap install <cangjie|cangjie-sdk|cangjie-stdx>[@version] | <doctor|replace-plan|restore-plan|receipt-readback> ..."))
             return 2
         }
         let action = commandLine[2]
+        if (action == "cangjie" || action == "cangjie-sdk" || action == "cangjie-stdx" || startsWithText(action, "cangjie@") || startsWithText(action, "cangjie-sdk@") || startsWithText(action, "cangjie-stdx@")) {
+            let options = resolveCangjiePackageInstallOptions(commandLine, 2)
+            let output = if (options.plan) { renderCangjiePackageInstallPlanJson(options) } else { runCangjiePackageInstall(options) }
+            println(output)
+            return cangjiePackageInstallExitCode(output)
+        }
         if (action == "doctor") {
             println(renderInstallDoctorJson(resolveInstallDoctorOptions(commandLine, 3)))
             return 0
@@ -743,6 +749,12 @@ public func renderHapCliHelp(): String {
     "  ci executor-snippet                               Emit a reviewed CI snippet for executor adoption review\n" +
     "  ci hosted-proof-pack                              Write a non-mutating hosted CI proof workflow pack\n" +
     "  release manifest                                  Emit release asset/checksum truth without publishing assets\n" +
+    "  install cangjie[@version]                        Install the official native Cangjie SDK into Hap private storage\n" +
+    "  install cangjie-sdk[@version]                    Explicit SDK package name; same payload as cangjie\n" +
+    "  install cangjie-stdx[@version]                   Install the matching official stdx binary package separately\n" +
+    "       [--target <target>] [--install-root <path>]  Omitted/latest/lts means pinned latest LTS; exact versions stay exact\n" +
+    "       [--region auto|global|zh-cn]                HapPub mirror first; zh-cn prepends allowlisted accelerators\n" +
+    "       [--plan] [--proxy|--no-proxy]               Plan is read-only; installs never edit projects, rc files, or system SDKs\n" +
     "  install doctor --brewfile <path>|--formula <path> Diagnose tap/brew/action bootstrap config without installing\n" +
     "  install replace-plan --asset <path|url>           Review hapup flagship replacement inputs without installing\n" +
     "  install restore-plan --install-dir <dir>          Review hapup flagship restore inputs without restoring\n" +

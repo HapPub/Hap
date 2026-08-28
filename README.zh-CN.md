@@ -84,6 +84,7 @@ hap help
 - 检查 `cjpm.toml`，诊断本地 `path` 依赖与远端 `git` 依赖的差异。
 - 从可构建项目记录 stdx 目标配置，在其他项目中规划或写入带备份的修复。
 - 执行固定的 `cjpm build` 和 `cjpm bundle`，提供受限的环境诊断、一次修复重试和中心仓依赖发布顺序提示。
+- 通过精确包规格、固定 LTS 解析与 SHA-256 门禁，把官方仓颉 SDK 或 stdx 安装到 Hap 私有目录；不修改项目、shell 配置或系统 SDK。
 - 通过固定的 `hvigor` 与 `hdc` 命令构建、安装、启动和验证 HarmonyOS 应用。
 - 按 Phone/Tablet/Fold/PC 布局先请求 HarmonyOS 窗口尺寸，再用 bundle PID
   绑定 WMS 实际矩形，截取 display 并生成结构化窗口截图回执。
@@ -102,14 +103,24 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-两个 `get` 命令只输出方案，不在这个入口直接下载或安装。`global` 优先使用按原字节搬运的
-[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn`
-优先使用 GitCode 原始 release；两个内置渠道都以镜像的 `manifest.v1.json` 作为
-SHA-256 依据。显式传入 `--provider-url` 时保持自定义渠道，不静默回退。
+`cangjie` 是 `cangjie-sdk` 的别名；`cangjie-stdx` 始终是独立包。省略版本、
+`@latest` 或 `@lts` 都固定解析到当前 LTS `1.0.5`；`@1.1.3` 保持精确 STS。
+默认安装到 `~/.hap/toolchains`；显式根目录只能位于 `HOME/.hap` 或操作系统临时目录内。
+`--plan` 不下载也不写文件。
+
+两个旧 `get` 命令仍是 nightly 获取方案入口。真实稳定/LTS 安装中，`global` 优先使用
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn` 在同一
+镜像 URL 前添加受控加速前缀，然后回退到直连镜像与官方源；加速器不是校验权威。
+安装目录清单面向 `https://cli.hap.pub/manifests/cangjie-install-v1.json`，字节级校验
+仍由精确镜像 `manifest.v1.json` 与固定 SHA-256 决定。
 
 ### HarmonyOS 应用开发
 

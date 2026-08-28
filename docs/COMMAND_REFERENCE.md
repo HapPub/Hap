@@ -20,11 +20,29 @@ by the executable.
 | `toolchain providers`, `toolchain doctor` | Inspect compatible provider families without switching SDK versions. |
 | `get cangjie-stdx`, `get cangjie-sdk` | Emit reviewed acquisition/install plans. |
 | `fetch reviewed-recipe` | Write a checksum-gated fetch/deploy recipe without executing it inside HapCLI. |
-| `install ...` | Review replacement/restore inputs and read Hapup receipts. |
+| `install cangjie|cangjie-sdk|cangjie-stdx[@version]` | Install checksum-gated official SDK/stdx packages into Hap private storage; `--plan` is read-only. |
+| `install doctor|replace-plan|restore-plan|receipt-readback` | Review replacement/restore inputs and read Hapup receipts. |
 | `dictionary refresh` | Refresh a local dictionary cache from an explicit source. |
 | `release manifest` | Emit current preview release metadata without publishing assets. |
 
 ## Cangjie Download Routes
+
+For stable/LTS package installation:
+
+```bash
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --plan
+```
+
+`cangjie` resolves to `cangjie-sdk`. Omitted/latest/lts is pinned to `1.0.5`
+LTS; `1.1.3` is an exact STS request. SDK and stdx use separate assets and
+completion markers. The default root is `~/.hap/toolchains`. An explicit root
+must remain under `HOME/.hap` or an OS temporary directory,
+and a custom receipt must remain inside that root. `global` tries the HapPub
+byte-preserving mirror before the official source; `zh-cn` prepends only
+the built-in allowlisted accelerator URLs, then tries the direct mirror and
+official source. Every candidate must match the same pinned SHA-256.
 
 `hap get cangjie-sdk` and `hap get cangjie-stdx` resolve a transport and emit a
 non-executing plan. Region precedence is:

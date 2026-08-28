@@ -447,7 +447,9 @@ func writeBootstrapCompletionMarker(path: String, version: String, sha256: Strin
 
 func extractCangjieBootstrapArchive(archive: String, destination: String): HapBuildCommandResult {
     try {
-        Directory.create(destination, recursive: true)
+        if (!exists(destination)) {
+            Directory.create(destination, recursive: true)
+        }
     } catch (error: Exception) {
         return HapBuildCommandResult(1, "", error.message)
     }
