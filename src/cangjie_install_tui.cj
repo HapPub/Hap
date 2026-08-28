@@ -41,20 +41,38 @@ public func runCangjiePackageInstallTui(): String {
     if (!cangjieInstallInteractiveTerminalAvailable()) {
         return renderInspectCjpmErrorJson("interactive-terminal-unavailable", "use an explicit version and --route for non-interactive execution")
     }
-    let versionRows = [
-        "1.0.5  LTS  latest/default",
-        "1.1.3  STS  exact release"
-    ]
-    let versionChoice = selectCangjieInstallTuiRow("Choose Cangjie version", versionRows, 0, "↑/↓ move  Enter select  q cancel")
-    if (versionChoice.cancelled) {
-        return renderCangjieInstallTuiCancelled("version-selection")
+    let stableOptions = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@1.0.5"], 2)
+    if (!stableOptions.valid) {
+        return renderInspectCjpmErrorJson(stableOptions.errorCode, stableOptions.errorMessage)
     }
-    let version = if (versionChoice.selected == 0) { "1.0.5" } else { "1.1.3" }
+    renderCangjieInstallCatalogPrelude(stableOptions.target)
+    let nightly = discoverLatestCangjieNightly("cangjie-sdk", stableOptions.platform, stableOptions.networkMode)
+    let versionRows = ArrayList<String>()
+    versionRows.add("1.0.5  LTS  latest/default")
+    versionRows.add("1.1.3  STS  exact release")
+    if (nightly.valid) {
+        let published = if (nightly.publishedAt.size > 0) { "  " + nightly.publishedAt } else { "" }
+        versionRows.add(nightly.version + "  NIGHTLY  dynamic" + published)
+    }
+    let nightlyFooter = if (nightly.valid) {
+        "nightly via " + nightly.catalogSource
+    } else {
+        "nightly unavailable · " + nightly.catalogStatus
+    }
+    let versionChoice = selectCangjieInstallTuiRow("Choose Cangjie version", versionRows.toArray(), 0, "↑/↓ move  Enter select  q cancel · " + nightlyFooter)
+    if (versionChoice.cancelled) {
+        return renderCangjieInstallTuiCancelledAfterCatalog(nightly, "version-selection")
+    }
+    let version = if (versionChoice.selected == 0) { "1.0.5" } else if (versionChoice.selected == 1) { "1.1.3" } else { nightly.version }
     let options = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@" + version], 2)
     if (!options.valid) {
         return renderInspectCjpmErrorJson(options.errorCode, options.errorMessage)
     }
-    let asset = resolveCangjiePackageInstallAsset(options)
+    copyCangjieCatalogMetadata(options, nightly)
+    if (versionChoice.selected == 2) {
+        bindCangjieNightlyRelease(options, nightly)
+    }
+    let asset = if (versionChoice.selected == 2) { nightly.asset } else { resolveCangjiePackageInstallAsset(options) }
     if (!asset.valid) {
         return renderCangjiePackageInstallJson(options, asset, unsupportedCangjiePackageInstallResult(options))
     }
@@ -161,6 +179,16 @@ func renderCangjieInstallProbePrelude(version: String, target: String): Unit {
     }
 }
 
+@When[os != "Windows"]
+func renderCangjieInstallCatalogPrelude(target: String): Unit {
+    let terminal = HapDeviceRawTerminal.open()
+    try {
+        terminal.write("\u{001B}[2J\u{001B}[HHap · Cangjie installer\nResolving schema-gated nightly catalog for " + target + "…\n")
+    } finally {
+        terminal.close()
+    }
+}
+
 public func probeCangjieInstallRoutes(options: HapCangjiePackageInstallOptions, asset: HapCangjiePackageInstallAsset): ArrayList<HapCangjieRouteProbe> {
     let probes = cangjieInstallRouteCatalog(asset)
     for (probe in probes) {
@@ -174,7 +202,8 @@ public func cangjieInstallRouteCatalog(asset: HapCangjiePackageInstallAsset): Ar
     addCangjieInstallRouteProbe(probes, "mirror", "HapPub mirror", asset.mirrorUrl)
     addCangjieInstallRouteProbe(probes, "ghfast", "Mainland accelerator · ghfast", rewriteGithubDownloadUrl("https://ghfast.top/", asset.mirrorUrl))
     addCangjieInstallRouteProbe(probes, "ghproxy", "Mainland accelerator · ghproxy", rewriteGithubDownloadUrl("https://ghproxy.link/", asset.mirrorUrl))
-    addCangjieInstallRouteProbe(probes, "official", "Official source", asset.sourceUrl)
+    let upstreamLabel = if (asset.checksumAuthority == "happub-mirror-manifest-sha256") { "Upstream source" } else { "Official source" }
+    addCangjieInstallRouteProbe(probes, "official", upstreamLabel, asset.sourceUrl)
     probes
 }
 
@@ -329,6 +358,10 @@ func renderCangjieInstallRouteProbeFailure(options: HapCangjiePackageInstallOpti
 
 func renderCangjieInstallTuiCancelled(stage: String): String {
     "{\n  \"schema\": \"happub-hapcli-cangjie-install-tui-v1\",\n  \"ok\": false,\n  \"status\": \"cancelled\",\n  \"stage\": \"" + escapeJson(stage) + "\",\n  \"routeProbeActionTaken\": false,\n  \"downloadActionTaken\": false,\n  \"installActionTaken\": false,\n  \"systemMutation\": false\n}"
+}
+
+func renderCangjieInstallTuiCancelledAfterCatalog(release: HapCangjieNightlyRelease, stage: String): String {
+    "{\n  \"schema\": \"happub-hapcli-cangjie-install-tui-v1\",\n  \"ok\": false,\n  \"status\": \"cancelled\",\n  \"stage\": \"" + escapeJson(stage) + "\",\n  \"catalogActionTaken\": " + boolJson(release.catalogActionTaken) + ",\n  \"catalogSource\": \"" + escapeJson(release.catalogSource) + "\",\n  \"catalogStatus\": \"" + escapeJson(release.catalogStatus) + "\",\n  \"resolvedNightly\": \"" + escapeJson(release.version) + "\",\n  \"routeProbeActionTaken\": false,\n  \"downloadActionTaken\": false,\n  \"installActionTaken\": false,\n  \"systemMutation\": false\n}"
 }
 
 func renderCangjieInstallTuiCancelledAfterProbe(options: HapCangjiePackageInstallOptions, asset: HapCangjiePackageInstallAsset, stage: String): String {

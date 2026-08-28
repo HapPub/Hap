@@ -757,7 +757,8 @@ public func renderHapCliHelp(): String {
     "  install cangjie[@version]                        Exact no-option command opens TUI; explicit forms install the SDK\n" +
     "  install cangjie-sdk[@version]                    Explicit SDK package name; same payload as cangjie\n" +
     "  install cangjie-stdx[@version]                   Install the matching official stdx binary package separately\n" +
-    "       [--target <target>] [--install-root <path>]  Omitted/latest/lts means pinned latest LTS; exact versions stay exact\n" +
+    "       [--target <target>] [--install-root <path>]  Omitted/latest/lts is pinned LTS; nightly resolves dynamically\n" +
+    "                                                     Exact bounded nightly tags are also accepted\n" +
     "       [--region auto|global|zh-cn]                HapPub mirror first; zh-cn prepends allowlisted accelerators\n" +
     "       [--route auto|mirror|ghfast|ghproxy|official] Probe fastest or force one exact reviewed route\n" +
     "       [--plan] [--proxy|--no-proxy]               Plan is read-only; installs never edit projects, rc files, or system SDKs\n" +

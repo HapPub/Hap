@@ -126,6 +126,7 @@ hap bundle --project . --skip-lint
 hap install cangjie@latest --target macos-arm64 --region auto
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
 hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
 hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
@@ -133,12 +134,15 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 
 `cangjie` is an alias for `cangjie-sdk`; `cangjie-stdx` remains a separate
 package. An omitted version, `@latest`, or `@lts` resolves to the pinned latest
-LTS (`1.0.5`); `@1.1.3` remains the exact STS line. Installs default to
+LTS (`1.0.5`); `@1.1.3` remains the exact STS line. `@nightly` dynamically
+resolves the newest validated prerelease, while an exact bounded nightly tag
+such as `@1.3.0-alpha.20260828010050` remains reproducible. Installs default to
 `~/.hap/toolchains`; explicit roots are restricted to `HOME/.hap` or an OS
 temporary directory. `--plan` performs no download or filesystem write.
 
 Run the exact command `hap install cangjie` in a terminal to open the
-interactive installer. It lets you choose LTS or STS, measures the current
+interactive installer. It lets you choose LTS, STS, or the currently resolved
+nightly, measures the current
 HTTPS latency of the reviewed mirror, Mainland accelerators, and official
 source, then offers automatic-fastest or one forced route before final
 confirmation. A failed probe is displayed as unreachable, not as a fabricated
@@ -148,14 +152,18 @@ remain non-interactive. Agents and CI can use
 silently falls back. Probe timing is transport evidence only and never replaces
 the pinned SHA-256 authority.
 
-The two older `get` commands remain plan-only nightly acquisition surfaces.
-For real stable/LTS installs, `global` routes to the byte-preserving
+The two older `get` commands remain plan-only acquisition surfaces. Real
+nightly installs are now available through `install`, and `--plan` deliberately
+reports pending dynamic resolution without contacting the network. HapCLI treats
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` as a schema-gated
+supplementary dictionary, then falls back to the live HapPub mirror index when
+the dictionary is absent, stale, or is a website fallback rather than JSON.
+The selected release's exact `manifest.v1.json` remains the asset and SHA-256
+authority. For stable/LTS installs, `global` routes to the byte-preserving
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror) first, while
 `zh-cn` prepends allowlisted acceleration prefixes to the same mirror, then
 falls back to the direct mirror and official source. Accelerators never become
-checksum authorities. The catalog is designed for
-`https://cli.hap.pub/manifests/cangjie-install-v1.json`; exact mirror manifests
-remain the byte-level SHA-256 authority.
+checksum authorities.
 
 For reviewed GitHub Actions and other hosted runners, the repository provides
 a real mirror-to-environment bridge:

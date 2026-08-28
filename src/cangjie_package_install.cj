@@ -13,6 +13,14 @@ public class HapCangjiePackageInstallOptions {
     public var resolvedVersion: String = ""
     public var assetVersion: String = ""
     public var releaseChannel: String = ""
+    public var dynamicRequested: Bool = false
+    public var dynamicManifest: String = ""
+    public var catalogActionTaken: Bool = false
+    public var catalogSource: String = "built-in-stable-catalog"
+    public var catalogStatus: String = "not-requested"
+    public var catalogPublishedAt: String = ""
+    public var catalogManifestUrl: String = ""
+    public var catalogDiagnostic: String = ""
     public var target: String = ""
     public var platform: String = ""
     public var requestedRegion: String = "auto"
@@ -29,6 +37,7 @@ public class HapCangjiePackageInstallOptions {
     public let routeProbes: ArrayList<HapCangjieRouteProbe> = ArrayList<HapCangjieRouteProbe>()
     public var installRoot: String = ""
     public var receipt: String = ""
+    public var receiptExplicit: Bool = false
     public var networkMode: String = "no-proxy"
     public var timeoutSeconds: Int64 = 900
     public var retryCount: Int64 = 2
@@ -102,11 +111,13 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
         }
         if (current == "--receipt" && i + 1 < commandLine.size) {
             options.receipt = commandLine[i + 1]
+            options.receiptExplicit = true
             i += 2
             continue
         }
         if (startsWithText(current, "--receipt=")) {
             options.receipt = substringFrom(current, 10)
+            options.receiptExplicit = true
             i += 1
             continue
         }
@@ -209,7 +220,8 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
         return rejectCangjiePackageOptions(options, "install-root-not-private", "install root must stay under HOME/.hap or an OS temporary directory")
     }
     if (options.receipt.size == 0) {
-        options.receipt = options.installRoot + "/receipts/" + options.resolvedPackage + "-" + options.assetVersion + "-" + options.target + ".json"
+        let receiptVersion = if (options.assetVersion.size > 0) { options.assetVersion } else { "nightly" }
+        options.receipt = options.installRoot + "/receipts/" + options.resolvedPackage + "-" + receiptVersion + "-" + options.target + ".json"
     } else if (!cangjiePackageReceiptIsPrivate(options.installRoot, options.receipt)) {
         return rejectCangjiePackageOptions(options, "receipt-outside-install-root", "receipt must stay inside the selected private install root")
     }
@@ -245,11 +257,24 @@ func parseCangjiePackageSpec(options: HapCangjiePackageInstallOptions): Unit {
     } else if (requested == "1.1.3" || (options.resolvedPackage == "cangjie-stdx" && requested == "1.1.3.1")) {
         options.resolvedVersion = "1.1.3"
         options.releaseChannel = "STS"
+    } else if (requested == "nightly") {
+        options.dynamicRequested = true
+        options.releaseChannel = "NIGHTLY"
+        options.catalogSource = "pending-dynamic-resolution"
+        options.catalogStatus = "pending-execution"
+    } else if (isCangjieNightlyVersion(requested)) {
+        options.dynamicRequested = true
+        options.resolvedVersion = requested
+        options.releaseChannel = "NIGHTLY"
+        options.catalogSource = "exact-nightly-tag"
+        options.catalogStatus = "pending-execution"
     } else {
-        rejectCangjiePackageOptions(options, "unsupported-cangjie-version", "supported release lines: latest/lts (1.0.5 LTS), 1.0.5, 1.1.3 STS")
+        rejectCangjiePackageOptions(options, "unsupported-cangjie-version", "supported release lines: latest/lts (1.0.5 LTS), 1.0.5, 1.1.3 STS, nightly, or an exact nightly tag")
         return
     }
-    options.assetVersion = if (options.resolvedPackage == "cangjie-stdx") { options.resolvedVersion + ".1" } else { options.resolvedVersion }
+    if (options.resolvedVersion.size > 0) {
+        options.assetVersion = if (options.resolvedPackage == "cangjie-stdx") { options.resolvedVersion + ".1" } else { options.resolvedVersion }
+    }
     options.valid = true
 }
 
@@ -263,6 +288,12 @@ func rejectCangjiePackageOptions(options: HapCangjiePackageInstallOptions, code:
 public func resolveCangjiePackageInstallAsset(options: HapCangjiePackageInstallOptions): HapCangjiePackageInstallAsset {
     if (!options.valid) {
         return HapCangjiePackageInstallAsset()
+    }
+    if (options.dynamicRequested) {
+        if (options.dynamicManifest.size == 0 || options.resolvedVersion.size == 0) {
+            return HapCangjiePackageInstallAsset()
+        }
+        return resolveCangjieNightlyAsset(options.dynamicManifest, options.resolvedVersion, options.resolvedPackage, options.platform)
     }
     if (options.resolvedPackage == "cangjie-sdk") {
         return resolveOfficialCangjieSdkInstallAsset(options.assetVersion, options.platform)
@@ -344,6 +375,21 @@ public func renderCangjiePackageInstallPlanJson(options: HapCangjiePackageInstal
     if (!options.valid) {
         return renderInspectCjpmErrorJson(options.errorCode, options.errorMessage)
     }
+    if (options.dynamicRequested) {
+        let asset = HapCangjiePackageInstallAsset()
+        let result = HapCangjiePackageInstallResult()
+        result.ok = true
+        result.status = "planned-dynamic-resolution"
+        let planVersion = if (options.assetVersion.size > 0) { options.assetVersion } else { "<latest-nightly>" }
+        result.finalRoot = options.installRoot + "/cangjie/" + options.resolvedPackage + "/" + planVersion + "/" + options.target
+        result.activationHint = cangjiePackageActivationHint(options, result.finalRoot, "")
+        options.catalogActionTaken = false
+        options.catalogStatus = "pending-execution"
+        if (options.resolvedVersion.size > 0) {
+            options.catalogManifestUrl = cangjieNightlyManifestUrl(options.resolvedVersion)
+        }
+        return renderCangjiePackageInstallJson(options, asset, result)
+    }
     let asset = resolveCangjiePackageInstallAsset(options)
     if (!asset.valid) {
         return renderCangjiePackageInstallJson(options, asset, unsupportedCangjiePackageInstallResult(options))
@@ -361,6 +407,20 @@ public func renderCangjiePackageInstallPlanJson(options: HapCangjiePackageInstal
 public func runCangjiePackageInstall(options: HapCangjiePackageInstallOptions): String {
     if (!options.valid) {
         return renderInspectCjpmErrorJson(options.errorCode, options.errorMessage)
+    }
+    if (options.dynamicRequested && options.dynamicManifest.size == 0) {
+        let release = if (options.resolvedVersion.size == 0) {
+            discoverLatestCangjieNightly(options.resolvedPackage, options.platform, options.networkMode)
+        } else {
+            resolveExactCangjieNightly(options.resolvedVersion, options.resolvedPackage, options.platform, options.networkMode)
+        }
+        bindCangjieNightlyRelease(options, release)
+        if (!release.valid) {
+            let failed = HapCangjiePackageInstallResult()
+            failed.status = "nightly-catalog-resolution-failed"
+            failed.diagnostic = release.diagnostic
+            return renderCangjiePackageInstallJson(options, release.asset, failed)
+        }
     }
     let asset = resolveCangjiePackageInstallAsset(options)
     if (!asset.valid) {
@@ -490,6 +550,7 @@ public func renderCangjiePackageInstallJson(options: HapCangjiePackageInstallOpt
     out.append("  \"assetVersion\": \"" + escapeJson(options.assetVersion) + "\",\n")
     out.append("  \"releaseChannel\": \"" + escapeJson(options.releaseChannel) + "\",\n")
     out.append("  \"latestPolicy\": \"latest-is-pinned-lts\",\n")
+    out.append("  \"dynamicVersionRequested\": " + boolJson(options.dynamicRequested) + ",\n")
     out.append("  \"target\": \"" + escapeJson(options.target) + "\",\n")
     out.append("  \"platform\": \"" + escapeJson(options.platform) + "\",\n")
     out.append("  \"requestedRegion\": \"" + escapeJson(options.requestedRegion) + "\",\n")
@@ -504,6 +565,12 @@ public func renderCangjiePackageInstallJson(options: HapCangjiePackageInstallOpt
     out.append("  \"routeProbeStatus\": \"" + escapeJson(options.routeProbeStatus) + "\",\n")
     out.append("  \"routeProbes\": " + renderCangjieInstallRouteProbesJson(options.routeProbes) + ",\n")
     out.append("  \"catalogUrl\": \"https://cli.hap.pub/manifests/cangjie-install-v1.json\",\n")
+    out.append("  \"catalogActionTaken\": " + boolJson(options.catalogActionTaken) + ",\n")
+    out.append("  \"catalogSource\": \"" + escapeJson(options.catalogSource) + "\",\n")
+    out.append("  \"catalogStatus\": \"" + escapeJson(options.catalogStatus) + "\",\n")
+    out.append("  \"catalogPublishedAt\": \"" + escapeJson(options.catalogPublishedAt) + "\",\n")
+    out.append("  \"catalogManifestUrl\": \"" + escapeJson(options.catalogManifestUrl) + "\",\n")
+    out.append("  \"catalogDiagnostic\": \"" + escapeJson(options.catalogDiagnostic) + "\",\n")
     out.append("  \"asset\": \"" + escapeJson(asset.name) + "\",\n")
     out.append("  \"assetUrl\": \"" + escapeJson(asset.url) + "\",\n")
     out.append("  \"mirrorUrl\": \"" + escapeJson(asset.mirrorUrl) + "\",\n")

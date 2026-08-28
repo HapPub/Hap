@@ -109,6 +109,7 @@ hap bundle --project . --skip-lint
 hap install cangjie@latest --target macos-arm64 --region auto
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
 hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
 hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
@@ -116,12 +117,16 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 
 `cangjie` — псевдоним `cangjie-sdk`; `cangjie-stdx` остается отдельным пакетом.
 Версия по умолчанию, `@latest` и `@lts` фиксируются на LTS `1.0.5`, а
-`@1.1.3` остается точной STS-линией. Установка идет в `~/.hap/toolchains`;
+`@1.1.3` остается точной STS-линией. `@nightly` динамически выбирает новейший
+проверенный prerelease; точный ограниченный nightly-тег, например
+`@1.3.0-alpha.20260828010050`, остаётся воспроизводимым. Установка идет в
+`~/.hap/toolchains`;
 явный корень допускается только внутри `HOME/.hap` или временного каталога ОС.
 `--plan` не загружает и не изменяет файлы.
 
 Точная команда `hap install cangjie` в интерактивном терминале открывает TUI:
-пользователь выбирает LTS или STS, видит ограниченное по времени HTTPS-измерение
+пользователь выбирает LTS, STS или текущий динамически найденный nightly, видит
+ограниченное по времени HTTPS-измерение
 зеркала, разрешённых ускорителей и официального источника, затем выбирает
 автоматически самый быстрый успешный маршрут либо один принудительный маршрут.
 Скрипты, перенаправленный ввод, явные версии и `--plan` остаются
@@ -130,7 +135,13 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 скрытого fallback. Задержка является только транспортным наблюдением и не
 заменяет закреплённый SHA-256.
 
-Старые команды `get` остаются планами для nightly. Для стабильной установки
+Старые команды `get` остаются только планами получения. Реальная установка
+nightly теперь доступна через `install`; `--plan` сообщает об ожидающем
+динамическом разрешении без сетевого запроса. HapCLI использует
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` как дополнительный
+словарь со строгой проверкой schema и при его отсутствии, устаревании или HTML
+fallback обращается к живому индексу HapPub Mirror. Точный `manifest.v1.json`
+выбранного выпуска остаётся источником списка файлов и SHA-256. Для стабильной установки
 `global` сначала использует побайтовое зеркало
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а `zh-cn`
 добавляет разрешенные ускоряющие префиксы к тому же URL, затем использует

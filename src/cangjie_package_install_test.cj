@@ -129,6 +129,57 @@ public class HapCangjiePackageInstallTest {
     }
 
     @TestCase
+    public func parsesDynamicNightlyAliasAndExactTagWithoutPlanNetwork(): Unit {
+        let alias = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@nightly", "--target", "macos-arm64", "--install-root", "/tmp/hc074-nightly", "--plan"], 2)
+        @Assert(alias.valid, true)
+        @Assert(alias.dynamicRequested, true)
+        @Assert(alias.releaseChannel, "NIGHTLY")
+        @Assert(alias.resolvedVersion, "")
+        let plan = renderCangjiePackageInstallPlanJson(alias)
+        @Assert(containsText(plan, "\"status\": \"planned-dynamic-resolution\""), true)
+        @Assert(containsText(plan, "\"catalogActionTaken\": false"), true)
+
+        let exactTag = "1.3.0-alpha.20260828010050"
+        let exact = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@" + exactTag, "--target", "macos-arm64", "--install-root", "/tmp/hc074-exact", "--plan"], 2)
+        @Assert(exact.valid, true)
+        @Assert(exact.resolvedVersion, exactTag)
+        @Assert(exact.assetVersion, exactTag)
+        @Assert(containsText(renderCangjiePackageInstallPlanJson(exact), cangjieNightlyManifestUrl(exactTag)), true)
+        @Assert(resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@1.3.0-alpha.today"], 2).errorCode, "unsupported-cangjie-version")
+    }
+
+    @TestCase
+    public func validatesSupplementaryDictionaryAndMirrorNightlyMetadata(): Unit {
+        let version = "1.3.0-alpha.20260828010050"
+        let manifestUrl = cangjieNightlyManifestUrl(version)
+        let dictionary = "{\"schema\": \"happub-hapcli-cangjie-install-catalog-v1\",\"releaseLines\":[{\"version\":\"" + version + "\",\"channel\": \"NIGHTLY\",\"publishedAt\":\"2026-08-28T02:33:47Z\",\"manifestUrl\":\"" + manifestUrl + "\"}]}"
+        let fromDictionary = resolveCangjieNightlyFromSupplementaryCatalog(dictionary)
+        @Assert(fromDictionary.valid, true)
+        @Assert(fromDictionary.version, version)
+        @Assert(fromDictionary.publishedAt, "2026-08-28T02:33:47Z")
+        @Assert(resolveCangjieNightlyFromSupplementaryCatalog("<html>fallback</html>").catalogStatus, "dictionary-schema-rejected")
+
+        let tags = "[{\"name\":\"stable\"},{\"name\":\"" + version + "\"},{\"name\":\"1.3.0-alpha.20260827010050\"}]"
+        @Assert(resolveLatestCangjieNightlyTag(tags), version)
+        let metadata = "{\"tag_name\":\"" + version + "\",\"draft\":false,\"prerelease\":true,\"published_at\":\"2026-08-28T02:33:47Z\"}"
+        @Assert(resolveCangjieNightlyReleaseMetadata(metadata, version).valid, true)
+        @Assert(resolveCangjieNightlyReleaseMetadata(metadata.replace("\"draft\":false", "\"draft\":true"), version).valid, false)
+    }
+
+    @TestCase
+    public func resolvesExactNightlyAssetOnlyFromValidatedMirrorManifest(): Unit {
+        let version = "1.3.0-alpha.20260828010050"
+        let name = "cangjie-sdk-mac-aarch64-" + version + ".tar.gz"
+        let manifest = "{\"schema\": \"happub-cangjie-sdk-mirror-manifest-v1\",\"ok\": true,\"status\": \"mirrored-verbatim\",\"upstream\":{\"tag\":\"" + version + "\"},\"mirror\":{\"tag\":\"" + version + "\"},\"assets\":[{\"name\": \"" + name + "\",\"classification\":\"sdk\",\"mirrorUrl\":\"https://github.com/HapPub/CangjieSDK-Mirror/releases/download/" + version + "/" + name + "\",\"sourceUrl\":\"https://gitcode.com/Cangjie/nightly_build/releases/download/" + version + "/" + name + "\",\"sha256\":\"" + "a" * 64 + "\"}],\"checksumPolicy\":{\"authority\": \"mirror-computed-sha256\"}}"
+        let asset = resolveCangjieNightlyAsset(manifest, version, "cangjie-sdk", "mac-aarch64")
+        @Assert(asset.valid, true)
+        @Assert(asset.name, name)
+        @Assert(asset.checksumAuthority, "happub-mirror-manifest-sha256")
+        @Assert(resolveCangjieNightlyAsset(manifest, version, "cangjie-sdk", "windows-x64").valid, false)
+        @Assert(resolveCangjieNightlyAsset(manifest.replace("mirrored-verbatim", "partial"), version, "cangjie-sdk", "mac-aarch64").valid, false)
+    }
+
+    @TestCase
     public func planReportsPinnedLtsAndTakesNoAction(): Unit {
         let options = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@latest", "--target", "macos-arm64", "--install-root", "/tmp/hc072-plan-no-mutation", "--plan"], 2)
         let json = renderCangjiePackageInstallPlanJson(options)

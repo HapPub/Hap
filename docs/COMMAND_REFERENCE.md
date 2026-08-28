@@ -32,13 +32,17 @@ For stable/LTS package installation:
 ```bash
 hap install cangjie@latest --target macos-arm64 --region auto
 hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
+hap install cangjie@1.3.0-alpha.20260828010050 --target macos-arm64 --route mirror
 hap install cangjie-sdk@1.1.3 --target macos-arm64 --route auto
 hap install cangjie-sdk@1.1.3 --target macos-arm64 --route mirror
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --plan
 ```
 
 `cangjie` resolves to `cangjie-sdk`. Omitted/latest/lts is pinned to `1.0.5`
-LTS; `1.1.3` is an exact STS request. SDK and stdx use separate assets and
+LTS; `1.1.3` is an exact STS request. `nightly` dynamically resolves the newest
+validated prerelease, and an exact bounded nightly tag remains reproducible.
+SDK and stdx use separate assets and
 completion markers. The default root is `~/.hap/toolchains`. An explicit root
 must remain under `HOME/.hap` or an OS temporary directory,
 and a custom receipt must remain inside that root. `global` tries the HapPub
@@ -47,7 +51,7 @@ the built-in allowlisted accelerator URLs, then tries the direct mirror and
 official source. Every candidate must match the same pinned SHA-256.
 
 The exact terminal command `hap install cangjie` opens a three-stage keyboard
-TUI: version, observed route latency/selection, and final private-install
+TUI: LTS/STS/current-nightly version, observed route latency/selection, and final private-install
 confirmation. Its probes use fixed HTTPS HEAD requests with bounded connect and
 total timeouts. `Automatic` picks the lowest observed latency among successful
 reviewed routes. Choosing a named route forces exactly that URL, even if its
@@ -61,6 +65,13 @@ non-interactive install. `--route mirror|ghfast|ghproxy|official` forces one
 exact route and disables fallback. `--route` and `--region` are mutually
 exclusive. `--plan` never probes. Latency values and acceleration never become
 checksum authority.
+
+Dynamic discovery first accepts the schema-gated supplementary dictionary at
+`https://cli.hap.pub/manifests/cangjie-install-v1.json`, then falls back to the
+live HapPub mirror release index. A successful HTTP response with the wrong
+schema, including the website HTML fallback, is rejected. The exact selected
+release `manifest.v1.json` must then provide the target asset and SHA-256 before
+any route probe or archive download. `--plan` performs none of these requests.
 
 `hap get cangjie-sdk` and `hap get cangjie-stdx` resolve a transport and emit a
 non-executing plan. Region precedence is:

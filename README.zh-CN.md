@@ -106,17 +106,21 @@ hap bundle --project . --skip-lint
 hap install cangjie@latest --target macos-arm64 --region auto
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
 hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
 hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
 `cangjie` 是 `cangjie-sdk` 的别名；`cangjie-stdx` 始终是独立包。省略版本、
-`@latest` 或 `@lts` 都固定解析到当前 LTS `1.0.5`；`@1.1.3` 保持精确 STS。
+`@latest` 或 `@lts` 都固定解析到当前 LTS `1.0.5`；`@1.1.3` 保持精确 STS；
+`@nightly` 动态解析最新且通过校验的预发布版本，也可用
+`@1.3.0-alpha.20260828010050` 这样的有界精确 nightly 标签复现安装。
 默认安装到 `~/.hap/toolchains`；显式根目录只能位于 `HOME/.hap` 或操作系统临时目录内。
 `--plan` 不下载也不写文件。
 
-在交互终端中直接运行 `hap install cangjie` 会打开安装 TUI：先选择 LTS/STS，
+在交互终端中直接运行 `hap install cangjie` 会打开安装 TUI：先选择 LTS、STS 或
+当前动态解析出的 nightly，
 再对受审阅的 HapPub 镜像、中国大陆加速线路和官方源执行有界 HTTPS 延迟观测，
 随后可选择“自动采用当前最快成功线路”或强制指定一条线路，并在最终确认后安装。
 探测失败会明确显示“不可达”，不会伪造延迟。脚本、重定向输入、显式版本和
@@ -124,11 +128,15 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 `--route auto|mirror|ghfast|ghproxy|official`，强制线路不会静默回退。测速只证明
 本次传输状态，不替代固定 SHA-256 校验权威。
 
-两个旧 `get` 命令仍是 nightly 获取方案入口。真实稳定/LTS 安装中，`global` 优先使用
+两个旧 `get` 命令仍保留为只生成方案的获取入口；真实 nightly 安装现已由 `install`
+支持。`--plan` 会报告等待动态解析且完全不访问网络。HapCLI 将
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` 作为经过 schema 校验的补充字典；
+字典缺失、过期，或返回官网 HTML 而非 JSON 时，会回退到 HapPub Mirror 的实时索引。
+最终版本对应的精确 `manifest.v1.json` 仍是资产与 SHA-256 权威。
+真实稳定/LTS 安装中，`global` 优先使用
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn` 在同一
 镜像 URL 前添加受控加速前缀，然后回退到直连镜像与官方源；加速器不是校验权威。
-安装目录清单面向 `https://cli.hap.pub/manifests/cangjie-install-v1.json`，字节级校验
-仍由精确镜像 `manifest.v1.json` 与固定 SHA-256 决定。
+字节级校验始终由精确镜像 `manifest.v1.json` 与固定 SHA-256 决定。
 
 ### HarmonyOS 应用开发
 
