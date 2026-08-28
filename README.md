@@ -137,6 +137,17 @@ LTS (`1.0.5`); `@1.1.3` remains the exact STS line. Installs default to
 `~/.hap/toolchains`; explicit roots are restricted to `HOME/.hap` or an OS
 temporary directory. `--plan` performs no download or filesystem write.
 
+Run the exact command `hap install cangjie` in a terminal to open the
+interactive installer. It lets you choose LTS or STS, measures the current
+HTTPS latency of the reviewed mirror, Mainland accelerators, and official
+source, then offers automatic-fastest or one forced route before final
+confirmation. A failed probe is displayed as unreachable, not as a fabricated
+latency. Scripts, redirected input, explicit package versions, and `--plan`
+remain non-interactive. Agents and CI can use
+`--route auto|mirror|ghfast|ghproxy|official`; an exact forced route never
+silently falls back. Probe timing is transport evidence only and never replaces
+the pinned SHA-256 authority.
+
 The two older `get` commands remain plan-only nightly acquisition surfaces.
 For real stable/LTS installs, `global` routes to the byte-preserving
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror) first, while

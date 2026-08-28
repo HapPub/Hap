@@ -18,6 +18,15 @@ public class HapCangjiePackageInstallOptions {
     public var requestedRegion: String = "auto"
     public var selectedRegion: String = "global"
     public var regionSelectionSource: String = "default-global"
+    public var regionExplicit: Bool = false
+    public var requestedRoute: String = "regional"
+    public var selectedRoute: String = "regional-fallback"
+    public var routeSelectionSource: String = "region-policy"
+    public var selectedRouteUrl: String = ""
+    public var selectedRouteLatencyMs: Int64 = -1
+    public var routeProbeActionTaken: Bool = false
+    public var routeProbeStatus: String = "not-requested"
+    public let routeProbes: ArrayList<HapCangjieRouteProbe> = ArrayList<HapCangjieRouteProbe>()
     public var installRoot: String = ""
     public var receipt: String = ""
     public var networkMode: String = "no-proxy"
@@ -103,11 +112,23 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
         }
         if (current == "--region" && i + 1 < commandLine.size) {
             options.requestedRegion = commandLine[i + 1]
+            options.regionExplicit = true
             i += 2
             continue
         }
         if (startsWithText(current, "--region=")) {
             options.requestedRegion = substringFrom(current, 9)
+            options.regionExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--route" && i + 1 < commandLine.size) {
+            options.requestedRoute = trimAsciiText(commandLine[i + 1])
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--route=")) {
+            options.requestedRoute = trimAsciiText(substringFrom(current, 8))
             i += 1
             continue
         }
@@ -132,7 +153,7 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
             continue
         }
         if (current == "--proxy") {
-            options.networkMode = "inherit-proxy"
+            options.networkMode = "proxy"
             i += 1
             continue
         }
@@ -151,6 +172,20 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
     if (!options.valid) {
         return options
     }
+    if (!isSupportedCangjieInstallRoute(options.requestedRoute)) {
+        return rejectCangjiePackageOptions(options, "invalid-install-route", "supported routes: auto, mirror, ghfast, ghproxy, official")
+    }
+    if (options.requestedRoute != "regional" && options.regionExplicit) {
+        return rejectCangjiePackageOptions(options, "conflicting-install-route", "use either --route or --region, not both")
+    }
+    if (options.requestedRoute == "auto") {
+        options.selectedRoute = "unprobed-auto"
+        options.routeSelectionSource = "latency-probe-pending"
+        options.routeProbeStatus = "pending-execution"
+    } else if (options.requestedRoute != "regional") {
+        options.selectedRoute = options.requestedRoute
+        options.routeSelectionSource = "explicit-route"
+    }
     if (options.target.size == 0) {
         options.target = detectNativeCangjieInstallTarget()
     }
@@ -158,7 +193,7 @@ public func resolveCangjiePackageInstallOptions(commandLine: Array<String>, star
     if (!isNativeCangjieInstallTarget(options.target) || options.platform.size == 0) {
         return rejectCangjiePackageOptions(options, "unsupported-install-target", "supported targets: macos-arm64, macos-amd64, linux-arm64, linux-amd64, windows-amd64")
     }
-    let route = resolveCangjieSourceRoute(options.requestedRegion, options.requestedRegion != "auto", "", "")
+    let route = resolveCangjieSourceRoute(options.requestedRegion, options.regionExplicit, "", "")
     if (!route.valid) {
         return rejectCangjiePackageOptions(options, "invalid-install-region", "supported regions: auto, global, zh-cn")
     }
@@ -313,6 +348,7 @@ public func renderCangjiePackageInstallPlanJson(options: HapCangjiePackageInstal
     if (!asset.valid) {
         return renderCangjiePackageInstallJson(options, asset, unsupportedCangjiePackageInstallResult(options))
     }
+    bindCangjieInstallRouteMetadata(options, asset)
     let result = HapCangjiePackageInstallResult()
     result.ok = true
     result.status = "planned"
@@ -329,6 +365,14 @@ public func runCangjiePackageInstall(options: HapCangjiePackageInstallOptions): 
     let asset = resolveCangjiePackageInstallAsset(options)
     if (!asset.valid) {
         return renderCangjiePackageInstallJson(options, asset, unsupportedCangjiePackageInstallResult(options))
+    }
+    bindCangjieInstallRouteMetadata(options, asset)
+    if (options.requestedRoute == "auto" && options.selectedRoute == "unprobed-auto" && !selectFastestCangjieInstallRoute(options, asset)) {
+        let failed = HapCangjiePackageInstallResult()
+        failed.status = "route-probe-failed"
+        failed.finalRoot = cangjiePackageFinalRoot(options)
+        failed.diagnostic = "no reviewed download route completed the bounded latency probe"
+        return renderCangjiePackageInstallJson(options, asset, failed)
     }
     let result = installResolvedCangjiePackage(options, asset)
     let json = renderCangjiePackageInstallJson(options, asset, result)
@@ -385,7 +429,7 @@ public func installResolvedCangjiePackage(options: HapCangjiePackageInstallOptio
         return result
     }
     if (!verifyCangjieBootstrapSha256(result.archivePath, asset.sha256)) {
-        let candidates = cangjiePackageTransferCandidates(options.selectedRegion, asset.mirrorUrl, asset.sourceUrl)
+        let candidates = cangjiePackageTransferCandidatesForOptions(options, asset)
         let download = downloadCangjieBootstrapFile(candidates, result.archivePath, options.timeoutSeconds, options.retryCount, options.networkMode)
         if (!download.ran || download.exitCode != 0) {
             result.status = "download-failed"
@@ -451,6 +495,14 @@ public func renderCangjiePackageInstallJson(options: HapCangjiePackageInstallOpt
     out.append("  \"requestedRegion\": \"" + escapeJson(options.requestedRegion) + "\",\n")
     out.append("  \"selectedRegion\": \"" + escapeJson(options.selectedRegion) + "\",\n")
     out.append("  \"regionSelectionSource\": \"" + escapeJson(options.regionSelectionSource) + "\",\n")
+    out.append("  \"requestedRoute\": \"" + escapeJson(options.requestedRoute) + "\",\n")
+    out.append("  \"selectedRoute\": \"" + escapeJson(options.selectedRoute) + "\",\n")
+    out.append("  \"routeSelectionSource\": \"" + escapeJson(options.routeSelectionSource) + "\",\n")
+    out.append("  \"selectedRouteUrl\": \"" + escapeJson(options.selectedRouteUrl) + "\",\n")
+    out.append("  \"selectedRouteLatencyMs\": " + options.selectedRouteLatencyMs.toString() + ",\n")
+    out.append("  \"routeProbeActionTaken\": " + boolJson(options.routeProbeActionTaken) + ",\n")
+    out.append("  \"routeProbeStatus\": \"" + escapeJson(options.routeProbeStatus) + "\",\n")
+    out.append("  \"routeProbes\": " + renderCangjieInstallRouteProbesJson(options.routeProbes) + ",\n")
     out.append("  \"catalogUrl\": \"https://cli.hap.pub/manifests/cangjie-install-v1.json\",\n")
     out.append("  \"asset\": \"" + escapeJson(asset.name) + "\",\n")
     out.append("  \"assetUrl\": \"" + escapeJson(asset.url) + "\",\n")
@@ -478,6 +530,9 @@ public func renderCangjiePackageInstallJson(options: HapCangjiePackageInstallOpt
 }
 
 public func cangjiePackageInstallExitCode(json: String): Int64 {
+    if (containsText(json, "\"status\": \"cancelled\"")) {
+        return 0
+    }
     if (containsText(json, "\"ok\": true")) {
         return 0
     }
@@ -510,6 +565,19 @@ public func cangjiePackageTransferCandidates(selectedRegion: String, mirrorUrl: 
     addUniqueBootstrapText(candidates, mirrorUrl)
     addUniqueBootstrapText(candidates, sourceUrl)
     candidates
+}
+
+public func cangjiePackageTransferCandidatesForOptions(options: HapCangjiePackageInstallOptions, asset: HapCangjiePackageInstallAsset): ArrayList<String> {
+    if (options.selectedRoute == "mirror" || options.selectedRoute == "ghfast" || options.selectedRoute == "ghproxy" || options.selectedRoute == "official") {
+        let exact = ArrayList<String>()
+        addUniqueBootstrapText(exact, cangjieInstallRouteUrl(options.selectedRoute, asset))
+        return exact
+    }
+    cangjiePackageTransferCandidates(options.selectedRegion, asset.mirrorUrl, asset.sourceUrl)
+}
+
+func isSupportedCangjieInstallRoute(route: String): Bool {
+    route == "regional" || route == "auto" || route == "mirror" || route == "ghfast" || route == "ghproxy" || route == "official"
 }
 
 func defaultCangjiePackageInstallRoot(): String {

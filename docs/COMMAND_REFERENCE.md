@@ -32,6 +32,8 @@ For stable/LTS package installation:
 ```bash
 hap install cangjie@latest --target macos-arm64 --region auto
 hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie-sdk@1.1.3 --target macos-arm64 --route auto
+hap install cangjie-sdk@1.1.3 --target macos-arm64 --route mirror
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --plan
 ```
 
@@ -43,6 +45,22 @@ and a custom receipt must remain inside that root. `global` tries the HapPub
 byte-preserving mirror before the official source; `zh-cn` prepends only
 the built-in allowlisted accelerator URLs, then tries the direct mirror and
 official source. Every candidate must match the same pinned SHA-256.
+
+The exact terminal command `hap install cangjie` opens a three-stage keyboard
+TUI: version, observed route latency/selection, and final private-install
+confirmation. Its probes use fixed HTTPS HEAD requests with bounded connect and
+total timeouts. `Automatic` picks the lowest observed latency among successful
+reviewed routes. Choosing a named route forces exactly that URL, even if its
+probe was unreachable; the subsequent bounded download remains the real
+availability check. Cancelling after probes records that network observation
+while keeping archive download, extraction, and system/project/rc mutations
+false.
+
+`--route auto` provides the same bounded fastest-success selection for a
+non-interactive install. `--route mirror|ghfast|ghproxy|official` forces one
+exact route and disables fallback. `--route` and `--region` are mutually
+exclusive. `--plan` never probes. Latency values and acceleration never become
+checksum authority.
 
 `hap get cangjie-sdk` and `hap get cangjie-stdx` resolve a transport and emit a
 non-executing plan. Region precedence is:

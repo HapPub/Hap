@@ -1,5 +1,6 @@
 package hapcli
 
+import std.collection.ArrayList
 import std.fs.{Directory, File, exists}
 import std.process.executeWithOutput
 import std.unittest.*
@@ -72,6 +73,62 @@ public class HapCangjiePackageInstallTest {
     }
 
     @TestCase
+    public func explicitRoutesAreExactAndDoNotSilentlyFallback(): Unit {
+        let asset = resolveOfficialCangjieSdkInstallAsset("1.1.3", "mac-aarch64")
+        for (route in ["mirror", "ghfast", "ghproxy", "official"]) {
+            let options = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@1.1.3", "--target", "macos-arm64", "--install-root", "/tmp/hc073-route", "--route", route, "--plan"], 2)
+            @Assert(options.valid, true)
+            @Assert(options.selectedRoute, route)
+            let candidates = cangjiePackageTransferCandidatesForOptions(options, asset)
+            @Assert(candidates.size, Int64(1))
+            @Assert(candidates[0], cangjieInstallRouteUrl(route, asset))
+        }
+        @Assert(resolveCangjiePackageInstallOptions(["hap", "install", "cangjie", "--route", "unknown"], 2).errorCode, "invalid-install-route")
+        @Assert(resolveCangjiePackageInstallOptions(["hap", "install", "cangjie", "--route", "auto", "--region", "global"], 2).errorCode, "conflicting-install-route")
+        @Assert(resolveCangjiePackageInstallOptions(["hap", "install", "cangjie", "--proxy", "--plan"], 2).networkMode, "proxy")
+    }
+
+    @TestCase
+    public func latencyParsingAndFastestSuccessfulRouteAreDeterministic(): Unit {
+        @Assert(parseCurlTimeTotalMilliseconds("0.123"), Int64(123))
+        @Assert(parseCurlTimeTotalMilliseconds("1.002901"), Int64(1002))
+        @Assert(parseCurlTimeTotalMilliseconds("2"), Int64(2000))
+        @Assert(parseCurlTimeTotalMilliseconds("not-a-time"), Int64(-1))
+
+        let probes = ArrayList<HapCangjieRouteProbe>()
+        let failed = HapCangjieRouteProbe()
+        failed.route = "mirror"
+        failed.status = "unreachable"
+        probes.add(failed)
+        let slow = HapCangjieRouteProbe()
+        slow.route = "official"
+        slow.ok = true
+        slow.latencyMs = 230
+        slow.status = "observed"
+        probes.add(slow)
+        let fast = HapCangjieRouteProbe()
+        fast.route = "ghfast"
+        fast.ok = true
+        fast.latencyMs = 88
+        fast.status = "observed"
+        probes.add(fast)
+        @Assert(fastestCangjieInstallRouteIndex(probes), Int64(2))
+        let rows = renderCangjieInstallRouteRows(probes, 2)
+        @Assert(containsText(rows[0], "88 ms"), true)
+        @Assert(containsText(renderCangjieInstallRouteProbesJson(probes), "\"status\":\"unreachable\""), true)
+    }
+
+    @TestCase
+    public func exactCommandOwnsTuiButExplicitAndPlanCommandsDoNot(): Unit {
+        @Assert(shouldOfferCangjieInstallTui(["hap", "install", "cangjie"]), true)
+        @Assert(shouldOfferCangjieInstallTui(["hap", "install", "cangjie@1.1.3"]), false)
+        @Assert(shouldOfferCangjieInstallTui(["hap", "install", "cangjie", "--plan"]), false)
+        let frame = renderCangjieInstallTuiFrame("Choose version", ["1.0.5 LTS", "1.1.3 STS"], 0, "Enter select")
+        @Assert(containsText(frame, "Hap · Cangjie installer"), true)
+        @Assert(containsText(frame, "1.0.5 LTS"), true)
+    }
+
+    @TestCase
     public func planReportsPinnedLtsAndTakesNoAction(): Unit {
         let options = resolveCangjiePackageInstallOptions(["hap", "install", "cangjie@latest", "--target", "macos-arm64", "--install-root", "/tmp/hc072-plan-no-mutation", "--plan"], 2)
         let json = renderCangjiePackageInstallPlanJson(options)
@@ -81,6 +138,7 @@ public class HapCangjiePackageInstallTest {
         @Assert(containsText(json, "\"downloadActionTaken\": false"), true)
         @Assert(containsText(json, "\"installActionTaken\": false"), true)
         @Assert(containsText(json, "\"systemMutation\": false"), true)
+        @Assert(containsText(json, "\"routeProbeActionTaken\": false"), true)
     }
 
     @TestCase

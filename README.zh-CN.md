@@ -116,6 +116,14 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 默认安装到 `~/.hap/toolchains`；显式根目录只能位于 `HOME/.hap` 或操作系统临时目录内。
 `--plan` 不下载也不写文件。
 
+在交互终端中直接运行 `hap install cangjie` 会打开安装 TUI：先选择 LTS/STS，
+再对受审阅的 HapPub 镜像、中国大陆加速线路和官方源执行有界 HTTPS 延迟观测，
+随后可选择“自动采用当前最快成功线路”或强制指定一条线路，并在最终确认后安装。
+探测失败会明确显示“不可达”，不会伪造延迟。脚本、重定向输入、显式版本和
+`--plan` 仍保持非交互；Agent/CI 可使用
+`--route auto|mirror|ghfast|ghproxy|official`，强制线路不会静默回退。测速只证明
+本次传输状态，不替代固定 SHA-256 校验权威。
+
 两个旧 `get` 命令仍是 nightly 获取方案入口。真实稳定/LTS 安装中，`global` 优先使用
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn` 在同一
 镜像 URL 前添加受控加速前缀，然后回退到直连镜像与官方源；加速器不是校验权威。
