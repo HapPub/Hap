@@ -37,8 +37,10 @@ return exit code `0` while reporting failure in its output.
 The HarmonyOS `prnt` adapter is a strict sequence rather than a generic screen
 tool: it requests geometry through `aa start`, resolves the bundle PID, binds
 that PID to the WindowManagerService table, captures the resulting display, and
-crops only the actual WMS rectangle with a fixed `sips` or ImageMagick adapter.
-Requested and actual geometry remain separate receipt fields.
+crops only the actual WMS rectangle with a fixed ImageMagick adapter. The
+macOS `sips` CLI is intentionally rejected because its ignored offset can make
+pixels disagree with the WMS receipt. Requested and actual geometry remain
+separate receipt fields.
 
 ### Local private state
 

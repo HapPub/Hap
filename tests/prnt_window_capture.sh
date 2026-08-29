@@ -95,7 +95,6 @@ PATH="$FAKE_BIN:$PATH" \
     --layoutType Tablet/16:9 \
     --left 40 --top 50 \
     --wait-ms 0 \
-    --cropper magick \
     --output-dir "$OUT_DIR" > "$TMP_ROOT/result.json"
 
 grep -q '"status": "window-capture-complete"' "$TMP_ROOT/result.json"
@@ -104,6 +103,7 @@ grep -q '"actualWindow": {"name": "corePlayer0", "pid": "18359", "windowId": 724
 grep -q '"wmsVerified": true' "$TMP_ROOT/result.json"
 grep -q '"displayCaptureTaken": true' "$TMP_ROOT/result.json"
 grep -q '"cropActionTaken": true' "$TMP_ROOT/result.json"
+grep -q '"cropper": "magick"' "$TMP_ROOT/result.json"
 grep -q '"remoteCleanupSucceeded": true' "$TMP_ROOT/result.json"
 grep -q '"hdcExecutionMode": "foreground-fixed-argv"' "$TMP_ROOT/result.json"
 grep -q '"hdcTimeoutSecondsRequested": 15' "$TMP_ROOT/result.json"

@@ -324,8 +324,12 @@ public func resolveHapPrntLayout(options: HapPrntOptions): HapPrntLayout {
         layout.message = "--wait-ms must be non-negative and --timeout-seconds must be positive"
         return layout
     }
-    if (options.cropper != "auto" && options.cropper != "sips" && options.cropper != "magick") {
-        layout.message = "--cropper must be auto, sips, or magick"
+    if (options.cropper == "sips") {
+        layout.message = "--cropper sips is unavailable because current macOS sips ignores crop offsets; use auto or magick"
+        return layout
+    }
+    if (options.cropper != "auto" && options.cropper != "magick") {
+        layout.message = "--cropper must be auto or magick"
         return layout
     }
 
@@ -546,10 +550,10 @@ public func runHapPrnt(options: HapPrntOptions): String {
     let cropperProgram = resolveHapPrntCropper(options.cropper)
     if (cropperProgram.size == 0) {
         receipt.status = "cropper-unavailable"
-        receipt.message = "window-only capture requires /usr/bin/sips or ImageMagick magick"
+        receipt.message = "window-only capture requires ImageMagick magick; macOS sips is rejected because it ignores crop offsets"
         return renderHapPrntReceiptJson(receipt)
     }
-    receipt.cropper = if (containsText(cropperProgram, "sips")) { "sips" } else { "magick" }
+    receipt.cropper = "magick"
     if (receipt.receiptPath.size == 0) {
         receipt.status = "output-dir-unresolved"
         receipt.message = "capture output directory could not be resolved"
@@ -795,29 +799,13 @@ func hapPrntLaunchArgs(config: HapHarmonyAdapterConfig, layout: HapPrntLayout): 
 }
 
 func resolveHapPrntCropper(requested: String): String {
-    if (requested == "sips") {
-        return if (exists("/usr/bin/sips")) { "/usr/bin/sips" } else if (isProgramResolvable("sips")) { "sips" } else { "" }
-    }
-    if (requested == "magick") {
-        return if (isProgramResolvable("magick")) { "magick" } else { "" }
-    }
-    if (exists("/usr/bin/sips")) {
-        return "/usr/bin/sips"
-    }
-    if (isProgramResolvable("magick")) {
+    if ((requested == "auto" || requested == "magick") && isProgramResolvable("magick")) {
         return "magick"
     }
     ""
 }
 
-func hapPrntCropArgs(cropper: String, input: String, output: String, window: HapPrntWindowRect): Array<String> {
-    if (cropper == "sips") {
-        return [
-            "-c", window.height.toString(), window.width.toString(),
-            "--cropOffset", window.top.toString(), window.left.toString(),
-            input, "--out", output
-        ]
-    }
+func hapPrntCropArgs(_: String, input: String, output: String, window: HapPrntWindowRect): Array<String> {
     [
         input,
         "-crop", window.width.toString() + "x" + window.height.toString() + "+" + window.left.toString() + "+" + window.top.toString(),

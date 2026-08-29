@@ -94,6 +94,36 @@ public class HarmonyWindowCaptureTest {
     }
 
     @TestCase
+    public func sipsCropperFailsBeforeAnyDeviceExecution(): Unit {
+        let options = HapPrntOptions()
+        options.device = "USB001"
+        options.bundle = "cc.example.player"
+        options.ability = "ProductAbility"
+        options.module = "product"
+        options.cropper = "sips"
+        let json = renderHapPrntPlanJson(options)
+        @Assert(containsText(json, "sips ignores crop offsets"), true)
+        @Assert(containsText(json, "\"executionActionTaken\": false"), true)
+        @Assert(containsText(json, "hdc list targets"), false)
+    }
+
+    @TestCase
+    public func imageMagickCropArgsPreserveExactWmsOrigin(): Unit {
+        let window = HapPrntWindowRect()
+        window.left = 11
+        window.top = 22
+        window.width = 640
+        window.height = 360
+        let args = hapPrntCropArgs("magick", "display.jpeg", "window.png", window)
+        @Assert(args.size, Int64(5))
+        @Assert(args[0], "display.jpeg")
+        @Assert(args[1], "-crop")
+        @Assert(args[2], "640x360+11+22")
+        @Assert(args[3], "+repage")
+        @Assert(args[4], "window.png")
+    }
+
+    @TestCase
     public func wmsParserBindsPidAndPrefersFocusedWindow(): Unit {
         let text = "WindowName DisplayId Pid WinId Type Mode Flag ZOrd Orientation [ x y w h ]\n" +
             "corePlayerSub 0 18359 700 1 1 1 2 0 [ 20 30 640 480 ]\n" +

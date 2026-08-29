@@ -180,8 +180,10 @@ hap prnt --project . --device my-pc \
 Supplying both `--width` and `--height` overrides a preset's default pixels.
 The receipt keeps both the requested rectangle and the actual WMS rectangle;
 the actual rectangle is always used for cropping. `--cropper auto` selects the
-fixed macOS `sips` adapter first and otherwise ImageMagick `magick`. Arbitrary
-crop commands are not accepted.
+fixed ImageMagick `magick` adapter. Current macOS `sips` is rejected before any
+device action because its CLI ignores the requested crop offset and can emit a
+centered image that contradicts the WMS receipt. Arbitrary crop commands are
+not accepted.
 
 By default, `prnt` force-stops the configured bundle before `aa start`; a cold
 ability launch is required for the requested geometry to take effect reliably.
