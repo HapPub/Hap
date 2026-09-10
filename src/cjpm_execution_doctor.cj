@@ -272,6 +272,10 @@ public func renderCjpmExecutionHumanSummary(json: String): String {
     let repaired = containsText(json, "\"environmentRepairApplied\": true")
     let candidate = extractFlatJsonString(json, "environmentCandidatePath")
     let sdkRoot = extractFlatJsonString(json, "environmentSdkRootCandidate")
+    let bootstrapOk = containsText(json, "\"toolchainBootstrapOk\": true")
+    let bootstrapVersion = extractFlatJsonString(json, "toolchainBootstrapVersion")
+    let bootstrapStatus = extractFlatJsonString(json, "toolchainBootstrapStatus")
+    let bootstrapCacheSource = extractFlatJsonString(json, "toolchainBootstrapCacheRootSource")
     let blocker = extractFlatJsonString(json, "primaryDependencyBlocker")
     let filesChanged = containsText(json, "\"filesChanged\": true")
     let out = StringBuilder()
@@ -284,6 +288,18 @@ public func renderCjpmExecutionHumanSummary(json: String): String {
         }
         if (sdkRoot.size > 0) {
             out.append("\nSDKROOT: " + sdkRoot)
+        }
+    }
+    if (bootstrapOk) {
+        out.append("\nToolchain: Hap bootstrap")
+        if (bootstrapVersion.size > 0) {
+            out.append(" " + bootstrapVersion)
+        }
+        if (bootstrapStatus.size > 0) {
+            out.append(" (" + bootstrapStatus + ")")
+        }
+        if (bootstrapCacheSource.size > 0) {
+            out.append("\nToolchain cache source: " + bootstrapCacheSource)
         }
     }
     if (blocker.size > 0) {

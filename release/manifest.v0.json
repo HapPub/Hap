@@ -2,7 +2,7 @@
   "schema": "happub-release-manifest-v0",
   "ok": true,
   "channel": "preview",
-  "version": "0.1.0-preview.2",
+  "version": "0.3.0",
   "status": "release-manifest-preview-ready",
   "baseUrl": "https://cli.hap.pub",
   "manifestUrl": "https://cli.hap.pub/release/manifest.v0.json",
@@ -14,7 +14,7 @@
       "target": "portable-posix-shell",
       "name": "hapup.sh",
       "url": "https://cli.hap.pub/install/hapup.sh",
-      "sha256": "b0fbdc2faba124573e5c4c6b930bb4a7205d2122f7c163611a4cc2ae30ef1fcd",
+      "sha256": "eb7b4a57ee68c2824acab9f6bfae16b60f638a4550e3e643c94e5cb962ab7340",
       "installRole": "thin-bootstrap-companion",
       "downloadable": true,
       "executable": true
@@ -27,7 +27,7 @@
       "target": "linux-amd64",
       "os": "linux",
       "arch": "amd64",
-      "name": "hap-0.1.0-preview.2-linux-amd64.tar.gz",
+      "name": "hap-0.3.0-linux-amd64.tar.gz",
       "status": "planned-not-published",
       "downloadable": false
     },
@@ -37,7 +37,7 @@
       "target": "darwin-arm64",
       "os": "darwin",
       "arch": "arm64",
-      "name": "hap-0.1.0-preview.2-darwin-arm64.tar.gz",
+      "name": "hap-0.3.0-darwin-arm64.tar.gz",
       "status": "planned-not-published",
       "downloadable": false
     }

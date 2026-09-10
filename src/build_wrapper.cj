@@ -16,6 +16,39 @@ public class HapBuildOptions {
     public var environmentAutoFix: Bool = true
     public var environmentAutoFixExplicit: Bool = false
     public var opensslLibPath: String = ""
+    public var toolchainAutoBootstrap: Bool = true
+    public var toolchainAutoBootstrapExplicit: Bool = false
+    public var cangjieSdkVersion: String = "auto"
+    public var downloadRegion: String = "auto"
+    public var downloadRegionExplicit: Bool = false
+    public var downloadAcceleration: String = "auto"
+    public var toolchainCacheRoot: String = ""
+    public var toolchainBootstrapTimeoutSeconds: Int64 = 900
+    public var toolchainDownloadRetryCount: Int64 = 2
+    public let downloadAccelerators: ArrayList<String> = ArrayList<String>()
+    public var toolchainBootstrapAttempted: Bool = false
+    public var toolchainBootstrapOk: Bool = false
+    public var toolchainBootstrapStatus: String = "not-attempted"
+    public var toolchainBootstrapVersion: String = ""
+    public var toolchainBootstrapSdkPlatform: String = ""
+    public var toolchainBootstrapStdxPlatform: String = ""
+    public var toolchainBootstrapCacheRoot: String = ""
+    public var toolchainBootstrapCacheRootSource: String = ""
+    public var toolchainBootstrapManifestPath: String = ""
+    public var toolchainBootstrapManifestUrl: String = ""
+    public var toolchainBootstrapSdkAsset: String = ""
+    public var toolchainBootstrapSdkSha256: String = ""
+    public var toolchainBootstrapStdxAsset: String = ""
+    public var toolchainBootstrapStdxSha256: String = ""
+    public var toolchainBootstrapSdkInstallRoot: String = ""
+    public var toolchainBootstrapStdxInstallRoot: String = ""
+    public var toolchainBootstrapEnvsetupPath: String = ""
+    public var toolchainBootstrapDownloadSource: String = ""
+    public var toolchainBootstrapDownloadActionTaken: Bool = false
+    public var toolchainBootstrapChecksumVerified: Bool = false
+    public var toolchainBootstrapInstallActionTaken: Bool = false
+    public var toolchainBootstrapCacheHit: Bool = false
+    public var toolchainBootstrapDiagnostic: String = ""
 
     public init() {}
 }
@@ -44,6 +77,15 @@ class HapBuildConfig {
     var verbose: Bool = false
     var environmentAutoFix: Bool = true
     var opensslLibPath: String = ""
+    var toolchainAutoBootstrap: Bool = true
+    var cangjieSdkVersion: String = "auto"
+    var downloadRegion: String = "auto"
+    var downloadRegionExplicit: Bool = false
+    var downloadAcceleration: String = "auto"
+    var toolchainCacheRoot: String = ""
+    var toolchainBootstrapTimeoutSeconds: Int64 = 900
+    var toolchainDownloadRetryCount: Int64 = 2
+    let downloadAccelerators: ArrayList<String> = ArrayList<String>()
 
     init() {}
 }
@@ -104,6 +146,70 @@ public func resolveBuildOptions(commandLine: Array<String>, start: Int64): HapBu
         if (current == "--env-fix") {
             options.environmentAutoFix = true
             options.environmentAutoFixExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--no-toolchain-bootstrap") {
+            options.toolchainAutoBootstrap = false
+            options.toolchainAutoBootstrapExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--toolchain-bootstrap") {
+            options.toolchainAutoBootstrap = true
+            options.toolchainAutoBootstrapExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--sdk-version" && i + 1 < commandLine.size) {
+            options.cangjieSdkVersion = commandLine[i + 1]
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--sdk-version=")) {
+            options.cangjieSdkVersion = substringFrom(current, 14)
+            i += 1
+            continue
+        }
+        if (current == "--region" && i + 1 < commandLine.size) {
+            options.downloadRegion = commandLine[i + 1]
+            options.downloadRegionExplicit = true
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--region=")) {
+            options.downloadRegion = substringFrom(current, 9)
+            options.downloadRegionExplicit = true
+            i += 1
+            continue
+        }
+        if (current == "--download-acceleration" && i + 1 < commandLine.size) {
+            options.downloadAcceleration = commandLine[i + 1]
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--download-acceleration=")) {
+            options.downloadAcceleration = substringFrom(current, 24)
+            i += 1
+            continue
+        }
+        if (current == "--toolchain-cache-root" && i + 1 < commandLine.size) {
+            options.toolchainCacheRoot = commandLine[i + 1]
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--toolchain-cache-root=")) {
+            options.toolchainCacheRoot = substringFrom(current, 23)
+            i += 1
+            continue
+        }
+        if (current == "--accelerator" && i + 1 < commandLine.size) {
+            options.downloadAccelerators.add(commandLine[i + 1])
+            i += 2
+            continue
+        }
+        if (startsWithText(current, "--accelerator=")) {
+            options.downloadAccelerators.add(substringFrom(current, 14))
             i += 1
             continue
         }
@@ -176,6 +282,9 @@ public func renderBuildJson(options: HapBuildOptions, canExecute: Bool, canWrite
     }
 
     let config = readHapBuildConfig(options)
+    if (config.toolchainAutoBootstrap && !isProgramResolvable("cjpm")) {
+        applyCangjieBootstrapResult(options, prepareCangjieToolchainBootstrap(options, config))
+    }
     let environment = inspectCurrentCjpmEnvironment(config.opensslLibPath)
     let blockers = if (options.action == "bundle") {
         centralDependencyBlockers(projectManifestPath(options.project))
@@ -211,13 +320,20 @@ public func renderBuildJson(options: HapBuildOptions, canExecute: Bool, canWrite
     var manifestRepairApplied = false
     var environmentRepairApplied = preflightEnvironmentRepair
     var environmentRepairStage = if (preflightEnvironmentRepair) { "preflight-child-overlay" } else { "none" }
-    let canRetryEnvironment = first.ran && first.exitCode != 0 && config.environmentAutoFix &&
+    if (first.ran && first.exitCode != 0 && config.toolchainAutoBootstrap && !options.toolchainBootstrapAttempted &&
+        cjpmFailureLooksLikeMissingTargetToolchain(first)) {
+        applyCangjieBootstrapResult(options, prepareCangjieToolchainBootstrap(options, config))
+        if (options.toolchainBootstrapOk) {
+            retry = executeCjpmAction(options, profile.sourceTarget, firstAssignments)
+        }
+    }
+    let canRetryEnvironment = !retry.ran && first.ran && first.exitCode != 0 && config.environmentAutoFix &&
         environment.candidateVerified && !preflightEnvironmentRepair && cjpmFailureLooksLikeCryptoEnvironmentDrift(first)
     if (canRetryEnvironment) {
         retry = executeCjpmAction(options, profile.sourceTarget, environment.assignments.toArray())
         environmentRepairApplied = true
         environmentRepairStage = "failure-classified-retry"
-    } else if (options.action == "build" && first.ran && first.exitCode != 0 && config.alwaysFix && profile.target.size > 0 && canWrite) {
+    } else if (shouldAttemptBuildDoctorfixRetry(options, config, profile, first, retry, canWrite)) {
         let doctorOptions = buildDoctorFixOptions(options, config)
         let repairJson = renderDoctorFixJson(doctorOptions, true)
         manifestRepairApplied = containsText(repairJson, "\"manifestMutationActionTaken\": true")
@@ -240,6 +356,18 @@ public func renderBuildJson(options: HapBuildOptions, canExecute: Bool, canWrite
         environmentRepairStage,
         Array<HapCentralDependencyBlocker>()
     )
+}
+
+func shouldAttemptBuildDoctorfixRetry(
+    options: HapBuildOptions,
+    config: HapBuildConfig,
+    profile: HapStdxProfile,
+    first: HapBuildCommandResult,
+    retry: HapBuildCommandResult,
+    canWrite: Bool
+): Bool {
+    !retry.ran && options.action == "build" && first.ran && first.exitCode != 0 &&
+        config.alwaysFix && profile.target.size > 0 && canWrite
 }
 
 public func renderBuildJsonFromResults(
@@ -269,7 +397,7 @@ func executeCjpmAction(
     profileSourceTarget: String,
     assignments: Array<String>
 ): HapBuildCommandResult {
-    if (!isProgramResolvable("cjpm")) {
+    if (!isProgramResolvable("cjpm") && options.toolchainBootstrapEnvsetupPath.size == 0) {
         return HapBuildCommandResult(127, "", "missing required command: cjpm")
     }
     let args = ArrayList<String>()
@@ -283,7 +411,21 @@ func executeCjpmAction(
         args.add(targetArg)
     }
     let workingDir = buildWorkingDirectory(options.project)
-    let command = resolveHapNetworkCommandWithAssignments(options.networkMode, assignments, "cjpm", args.toArray())
+    let command = if (options.toolchainBootstrapEnvsetupPath.size > 0) {
+        let shellArgs = ArrayList<String>()
+        shellArgs.add("-c")
+        shellArgs.add("set -e; . \"$1\"; shift; export CANGJIE_STDX_PATH=\"$1\"; shift; exec \"$@\"")
+        shellArgs.add("hap-toolchain-child")
+        shellArgs.add(options.toolchainBootstrapEnvsetupPath)
+        shellArgs.add(options.toolchainBootstrapStdxInstallRoot)
+        shellArgs.add("cjpm")
+        for (arg in args.toArray()) {
+            shellArgs.add(arg)
+        }
+        resolveHapNetworkCommandWithAssignments(options.networkMode, assignments, "/bin/sh", shellArgs.toArray())
+    } else {
+        resolveHapNetworkCommandWithAssignments(options.networkMode, assignments, "cjpm", args.toArray())
+    }
     let (exitCode, stdoutBytes, stderrBytes) = executeWithOutput(command.program, command.args.toArray(), workingDirectory: Path(workingDir))
     HapBuildCommandResult(exitCode, String.fromUtf8(stdoutBytes), String.fromUtf8(stderrBytes))
 }
@@ -299,6 +441,25 @@ func readHapBuildConfig(options: HapBuildOptions): HapBuildConfig {
         config.verbose = readTomlBool(text, "verbose")
         config.environmentAutoFix = readTomlBoolOr(text, "environmentAutoFix", true)
         config.opensslLibPath = readTomlString(text, "opensslLibPath")
+        config.toolchainAutoBootstrap = readTomlBoolOr(text, "toolchainAutoBootstrap", true)
+        config.cangjieSdkVersion = readTomlString(text, "cangjieSdkVersion")
+        if (config.cangjieSdkVersion.size == 0) {
+            config.cangjieSdkVersion = "auto"
+        }
+        config.downloadRegion = readTomlString(text, "downloadRegion")
+        if (config.downloadRegion.size > 0) {
+            config.downloadRegionExplicit = true
+        }
+        config.downloadAcceleration = readTomlString(text, "downloadAcceleration")
+        if (config.downloadAcceleration.size == 0) {
+            config.downloadAcceleration = "auto"
+        }
+        config.toolchainCacheRoot = readTomlString(text, "toolchainCacheRoot")
+        config.toolchainBootstrapTimeoutSeconds = readHapBootstrapTomlInt(text, "toolchainBootstrapTimeoutSeconds", 900)
+        config.toolchainDownloadRetryCount = readHapBootstrapTomlInt(text, "toolchainDownloadRetryCount", 2)
+        for (accelerator in readHapBootstrapStringArray(text, "downloadAccelerators")) {
+            config.downloadAccelerators.add(accelerator)
+        }
     }
     if (options.verbose) {
         config.verbose = true
@@ -308,6 +469,28 @@ func readHapBuildConfig(options: HapBuildOptions): HapBuildConfig {
     }
     if (options.opensslLibPath.size > 0) {
         config.opensslLibPath = options.opensslLibPath
+    }
+    if (options.toolchainAutoBootstrapExplicit) {
+        config.toolchainAutoBootstrap = options.toolchainAutoBootstrap
+    }
+    if (options.cangjieSdkVersion != "auto") {
+        config.cangjieSdkVersion = options.cangjieSdkVersion
+    }
+    if (options.downloadRegionExplicit) {
+        config.downloadRegion = options.downloadRegion
+        config.downloadRegionExplicit = true
+    }
+    if (options.downloadAcceleration != "auto") {
+        config.downloadAcceleration = options.downloadAcceleration
+    }
+    if (options.toolchainCacheRoot.size > 0) {
+        config.toolchainCacheRoot = options.toolchainCacheRoot
+    }
+    if (options.downloadAccelerators.size > 0) {
+        config.downloadAccelerators.clear()
+        for (accelerator in options.downloadAccelerators) {
+            config.downloadAccelerators.add(accelerator)
+        }
     }
     config
 }
@@ -387,6 +570,12 @@ func renderCjpmExecutionReceiptJson(
         status = "central-repository-dependency-blocked"
     } else if (!first.ran) {
         status = "execution-disabled"
+    } else if (options.toolchainBootstrapAttempted && !options.toolchainBootstrapOk) {
+        status = "toolchain-bootstrap-failed"
+    } else if (options.toolchainBootstrapOk && finalExit == 0) {
+        status = options.action + "-succeeded-after-toolchain-bootstrap"
+    } else if (options.toolchainBootstrapOk) {
+        status = options.action + "-failed-after-toolchain-bootstrap"
     } else if (first.exitCode == 127 && containsText(first.stderr, "missing required command: cjpm")) {
         status = "missing-cangjie-cjpm"
     } else if (first.exitCode == 0 && environmentRepairApplied) {
@@ -523,6 +712,27 @@ func buildReceiptBody(
     out.append("  \"environmentRepairApplied\": " + boolJson(environmentRepairApplied) + ",\n")
     out.append("  \"environmentRepairStage\": \"" + escapeJson(environmentRepairStage) + "\",\n")
     out.append("  \"environmentMutationScope\": \"child-process-only\",\n")
+    out.append("  \"toolchainAutoBootstrap\": " + boolJson(config.toolchainAutoBootstrap) + ",\n")
+    out.append("  \"toolchainBootstrapAttempted\": " + boolJson(options.toolchainBootstrapAttempted) + ",\n")
+    out.append("  \"toolchainBootstrapOk\": " + boolJson(options.toolchainBootstrapOk) + ",\n")
+    out.append("  \"toolchainBootstrapStatus\": \"" + escapeJson(options.toolchainBootstrapStatus) + "\",\n")
+    out.append("  \"toolchainBootstrapVersion\": \"" + escapeJson(options.toolchainBootstrapVersion) + "\",\n")
+    out.append("  \"toolchainBootstrapSdkPlatform\": \"" + escapeJson(options.toolchainBootstrapSdkPlatform) + "\",\n")
+    out.append("  \"toolchainBootstrapStdxPlatform\": \"" + escapeJson(options.toolchainBootstrapStdxPlatform) + "\",\n")
+    out.append("  \"toolchainBootstrapCacheRoot\": \"" + escapeJson(options.toolchainBootstrapCacheRoot) + "\",\n")
+    out.append("  \"toolchainBootstrapCacheRootSource\": \"" + escapeJson(options.toolchainBootstrapCacheRootSource) + "\",\n")
+    out.append("  \"toolchainBootstrapManifestPath\": \"" + escapeJson(options.toolchainBootstrapManifestPath) + "\",\n")
+    out.append("  \"toolchainBootstrapManifestUrl\": \"" + escapeJson(options.toolchainBootstrapManifestUrl) + "\",\n")
+    out.append("  \"toolchainBootstrapSdkAsset\": \"" + escapeJson(options.toolchainBootstrapSdkAsset) + "\",\n")
+    out.append("  \"toolchainBootstrapSdkSha256\": \"" + escapeJson(options.toolchainBootstrapSdkSha256) + "\",\n")
+    out.append("  \"toolchainBootstrapStdxAsset\": \"" + escapeJson(options.toolchainBootstrapStdxAsset) + "\",\n")
+    out.append("  \"toolchainBootstrapStdxSha256\": \"" + escapeJson(options.toolchainBootstrapStdxSha256) + "\",\n")
+    out.append("  \"toolchainBootstrapDownloadSource\": \"" + escapeJson(options.toolchainBootstrapDownloadSource) + "\",\n")
+    out.append("  \"toolchainBootstrapDownloadActionTaken\": " + boolJson(options.toolchainBootstrapDownloadActionTaken) + ",\n")
+    out.append("  \"toolchainBootstrapChecksumVerified\": " + boolJson(options.toolchainBootstrapChecksumVerified) + ",\n")
+    out.append("  \"toolchainBootstrapInstallActionTaken\": " + boolJson(options.toolchainBootstrapInstallActionTaken) + ",\n")
+    out.append("  \"toolchainBootstrapCacheHit\": " + boolJson(options.toolchainBootstrapCacheHit) + ",\n")
+    out.append("  \"toolchainBootstrapDiagnostic\": \"" + escapeJson(options.toolchainBootstrapDiagnostic) + "\",\n")
     out.append("  \"staleEnvironmentPaths\": ")
     appendReviewedJsonStringArray(out, environment.stalePaths)
     out.append(",\n")
@@ -542,9 +752,9 @@ func buildReceiptBody(
     out.append("  \"releaseOrder\": ")
     appendCentralReleaseOrderJson(out, dependencyBlockers, cjpmManifestPackageName(manifest), cjpmManifestPackageVersion(manifest))
     out.append(",\n")
-    out.append("  \"toolchainStatus\": \"" + escapeJson(if (status == "missing-cangjie-cjpm") { "missing-cangjie-cjpm" } else { projectToolchainStatus("cangjie", "build", project, "auto", HapHarmonyAdapterConfig()) }) + "\",\n")
+    out.append("  \"toolchainStatus\": \"" + escapeJson(if (options.toolchainBootstrapOk) { "bootstrap-provided-cangjie-toolchain" } else if (status == "missing-cangjie-cjpm") { "missing-cangjie-cjpm" } else { projectToolchainStatus("cangjie", "build", project, "auto", HapHarmonyAdapterConfig()) }) + "\",\n")
     out.append("  \"toolchainQuestions\": ")
-    appendReviewedJsonStringArray(out, buildToolchainQuestions(status))
+    appendReviewedJsonStringArray(out, buildToolchainQuestions(status, options.toolchainBootstrapOk))
     out.append(",\n")
     out.append("  \"toolchainValidationCommands\": ")
     appendReviewedJsonStringArray(out, projectToolchainValidationCommands("cangjie", "build", project, "auto", HapHarmonyAdapterConfig()))
@@ -568,12 +778,15 @@ func buildReceiptBody(
     out.append("  \"nextAllowed\": ")
     appendCjpmExecutionNextAllowed(out, options.action, dependencyBlockers)
     out.append(",\n")
-    out.append("  \"nonPromises\": [\"fixed CJPM actions only; no arbitrary shell or argv\", \"environment repair never mutates shell profiles or the parent process\", \"central dependency diagnosis never rewrites cjpm.toml automatically\", \"at most one retry follows a classified repair\", \"command success does not certify publication or release readiness\"]\n")
+    out.append("  \"nonPromises\": [\"fixed CJPM actions only; no arbitrary shell or argv\", \"toolchain bootstrap writes only Hap private cache and never mutates shell profiles or the parent process\", \"public accelerators are transport candidates and never checksum authorities\", \"Cangjie SDK and stdx bootstrap does not install or prove the OpenHarmony native sysroot\", \"central dependency diagnosis never rewrites cjpm.toml automatically\", \"at most one build retry follows a classified repair\", \"command success does not certify publication or release readiness\"]\n")
     out.append("}")
     out.toString()
 }
 
-func buildToolchainQuestions(status: String): ArrayList<String> {
+func buildToolchainQuestions(status: String, bootstrapProvided: Bool): ArrayList<String> {
+    if (bootstrapProvided) {
+        return ArrayList<String>()
+    }
     let questions = projectToolchainQuestions("cangjie", "build", ".", "auto", HapHarmonyAdapterConfig())
     if (status == "missing-cangjie-cjpm" && questions.size == 0) {
         questions.add("请提供 cjpm 所在路径并放入 PATH；HapCLI 当前按固定 cjpm build/test 调用，不接收任意 shell。")
@@ -586,7 +799,7 @@ func buildCjpmTargetArg(options: HapBuildOptions, profileSourceTarget: String): 
         return profileSourceTarget
     }
     if (options.requestedTarget.size > 0) {
-        return options.requestedTarget
+        return cangjieTargetTripleForTarget(options.target)
     }
     cangjieTargetTripleForTarget(options.target)
 }

@@ -17,6 +17,8 @@ jobs:
         run: sh tests/public-surface.sh
       - name: Validate Hapup security fixtures
         run: sh tests/hapup-security.sh
+      - name: Validate one-command bootstrap
+        run: python3 tests/hapup-install.py
       - name: Validate tag release contract
         run: sh tests/release-workflow.sh
       - name: Validate nightly native matrix contract

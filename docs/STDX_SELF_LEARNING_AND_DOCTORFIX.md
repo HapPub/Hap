@@ -70,11 +70,19 @@ alwaysFix = true
 verbose = false
 ```
 
+Before that repair path, flagship HapCLI can bootstrap a missing Cangjie SDK or
+target stdx from `HapPub/CangjieSDK-Mirror`. The install stays in Hap private
+cache, downloaded archives must match the mirror manifest SHA-256, and the
+environment is injected only into the fixed build child. If the first build
+classifies a missing target toolchain, the bootstrap may perform one build
+retry; it does not stack another environment or doctorfix retry afterward.
+
 If `alwaysFix=true` and a matching `cangjie.stdx` record exists, HapCLI applies one `doctorfix --write`, keeps `cjpm.toml.hap-backup`, and retries `cjpm build` once. If `alwaysFix=false`, if no matching record exists, or if the retry still fails, the receipt reports that state without pretending the build succeeded.
 
 `--verbose` or `verbose=true` includes captured stdout/stderr from the underlying `cjpm` calls in the receipt. Without verbose mode, the receipt keeps byte counts and exit codes but does not embed the full tool output.
 
-The wrapper still does not accept arbitrary shell commands, download stdx/runtime assets, mutate workflow files, or certify release readiness.
+The wrapper still does not accept arbitrary shell commands, mutate workflow
+files, install an OpenHarmony native sysroot, or certify release readiness.
 
 ## Current Boundary
 
@@ -83,6 +91,7 @@ Implemented now:
 - subject-based `record cangjie.stdx`
 - subject-based `doctorfix cangjie.stdx --plan|--write`
 - fixed `hap build` wrapper over `cjpm build`
+- checksum-gated private SDK/stdx bootstrap for fixed builds
 - `alwaysFix=true` one-shot doctorfix retry loop
 - config fallback from home private path to project-local paths
 - Linux, OHOS, macOS, and Windows target alias normalization

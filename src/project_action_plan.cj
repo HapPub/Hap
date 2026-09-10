@@ -343,13 +343,20 @@ public func renderProjectActionPlanJson(options: HapProjectActionOptions): Strin
     let wirelessReconnectAllowed = directWirelessTarget || (options.allowWireless && wirelessGateTrust.trusted && selected.projectKind == "harmonyos" && actionNeedsDevice(options.action))
     let toolchainStatus = projectToolchainStatusWithInteractive(selected.projectKind, options.action, options.project, options.target, harmonyConfig, interactiveRepair)
     let selectionOk = selection.status == "selected"
-    let ok = selectionOk && selected.projectKind != "unknown" && supportsProjectAction(selected.projectKind, options.action) && (!options.allowWireless || wirelessGateTrust.trusted)
+    let packageProviderRequired = selected.projectKind == "cangjie-harmonyos" && options.action == "build"
+    let unsupportedReviewedExecution = options.executeReviewed && selected.projectKind != "harmonyos"
+    let ok = selectionOk && selected.projectKind != "unknown" && supportsProjectAction(selected.projectKind, options.action) &&
+        (!options.allowWireless || wirelessGateTrust.trusted) && !packageProviderRequired && !unsupportedReviewedExecution
     let commands = if (selectionOk) { projectActionCommands(selected.projectKind, options.action, options, wirelessGateTrust, harmonyConfig) } else { ArrayList<String>() }
     let renderedDeviceTool = if (selected.projectKind == "kotlin-multiplatform" && isKmpDesktopTarget(options.target)) { "gradle" } else { selected.deviceTool }
     let status = if (!selectionOk) {
         selection.status
     } else if (!supportsProjectAction(selected.projectKind, options.action)) {
         "action-not-supported-for-adapter"
+    } else if (unsupportedReviewedExecution) {
+        "reviewed-execution-not-available-for-adapter"
+    } else if (packageProviderRequired) {
+        "package-provider-required"
     } else if (options.allowWireless && !wirelessGateTrust.trusted && options.wirelessReceipt.size == 0 && options.deviceMemory.size == 0) {
         "wireless-receipt-required"
     } else if (options.allowWireless && !wirelessGateTrust.trusted) {
@@ -379,6 +386,16 @@ public func renderProjectActionPlanJson(options: HapProjectActionOptions): Strin
     out.append("  \"buildSystem\": \"" + escapeJson(selected.buildSystem) + "\",\n")
     out.append("  \"deviceTool\": \"" + escapeJson(renderedDeviceTool) + "\",\n")
     out.append("  \"confidence\": \"" + escapeJson(selected.confidence) + "\",\n")
+    out.append("  \"packageProvider\": {\"id\": \"cangjie-harmonyos-package-provider\", \"status\": \"")
+    out.append(if (packageProviderRequired) { "provider-required" } else if (selected.projectKind == "cangjie-harmonyos") { "not-required-for-action" } else { "not-applicable" })
+    out.append("\", \"required\": " + boolJson(packageProviderRequired) + ", \"executionAvailable\": false, \"receiptRequired\": true, \"actions\": [\"inspect\", \"build\", \"package\"]},\n")
+    out.append("  \"cangjieHarmony\": ")
+    if (selected.projectKind == "cangjie-harmonyos") {
+        renderCangjieHarmonyInspectionJson(out, inspectCangjieHarmonyProject(options.project), "  ")
+    } else {
+        out.append("null")
+    }
+    out.append(",\n")
     out.append("  \"outputDir\": \"" + escapeJson(options.outputDir) + "\",\n")
     out.append("  \"device\": \"" + escapeJson(options.device) + "\",\n")
     out.append("  \"artifact\": \"" + escapeJson(options.artifact) + "\",\n")
@@ -452,7 +469,8 @@ public func renderProjectActionPlanJson(options: HapProjectActionOptions): Strin
     out.append("    \"keep dependency update and self-upgrade outside build/test plans\"\n")
     out.append("  ],\n")
     out.append("  \"nonPromises\": [\n")
-    out.append("    \"this plan does not execute hvigor, xcodebuild, gradle, cjpm, hdc, simctl, or devicectl\",\n")
+    out.append("    \"this plan does not execute hvigor, xcodebuild, gradle, cjpm, a package provider, hdc, simctl, or devicectl\",\n")
+    out.append("    \"Cangjie-native HarmonyOS packaging remains unavailable until a reviewed fixed provider is installed and receipt-bound\",\n")
     out.append("    \"this plan does not prove that an Apple account, signing identity, provisioning profile, or iOS device is currently usable\",\n")
     out.append("    \"this plan does not install, launch, listen, reconnect devices, update dependencies, or mutate workflow files\",\n")
     out.append("    \"command templates are fixed adapter candidates, not arbitrary shell input\"\n")
@@ -463,7 +481,7 @@ public func renderProjectActionPlanJson(options: HapProjectActionOptions): Strin
 
 func supportsProjectAction(projectKind: String, action: String): Bool {
     if (action == "build" || action == "test") {
-        return projectKind == "harmonyos" || projectKind == "ios" || projectKind == "kotlin-multiplatform" || projectKind == "cangjie"
+        return projectKind == "harmonyos" || projectKind == "cangjie-harmonyos" || projectKind == "ios" || projectKind == "kotlin-multiplatform" || projectKind == "cangjie"
     }
     if (action == "dev") {
         return projectKind == "harmonyos" || projectKind == "kotlin-multiplatform"
@@ -578,7 +596,7 @@ func applyInteractiveToolchainAnswers(projectKind: String, action: String, optio
         repair.status = interactiveRepairStatus(needed, valid)
         return repair
     }
-    if (projectKind == "cangjie") {
+    if (projectKind == "cangjie" || projectKind == "cangjie-harmonyos") {
         var needed: Int64 = 0
         var valid: Int64 = 0
         if (!isProgramResolvable("cjpm")) {
@@ -702,7 +720,7 @@ func projectToolchainStatusWithInteractive(projectKind: String, action: String, 
     if (status == "toolchain-ready") {
         return status
     }
-    if (repair.status == "valid-answers-accepted" && projectKind == "cangjie") {
+    if (repair.status == "valid-answers-accepted" && (projectKind == "cangjie" || projectKind == "cangjie-harmonyos")) {
         return "toolchain-answer-valid-path-update-required"
     }
     status
@@ -789,6 +807,14 @@ func projectActionCommands(
                 }
             }
         }
+    } else if (projectKind == "cangjie-harmonyos") {
+        if (action == "build") {
+            commands.add("cangjie-harmonyos-package-provider inspect --project <project> --receipt <inspect-receipt>")
+            commands.add("cjpm build")
+            commands.add("cangjie-harmonyos-package-provider package --project <project> --receipt <package-receipt>")
+        } else {
+            commands.add("cjpm test")
+        }
     } else if (projectKind == "cangjie") {
         if (action == "build") {
             commands.add("cjpm build")
@@ -816,12 +842,15 @@ func projectToolchainStatus(projectKind: String, action: String, project: String
         }
         return "toolchain-ready"
     }
-    if (projectKind == "cangjie") {
+    if (projectKind == "cangjie" || projectKind == "cangjie-harmonyos") {
         if (!isProgramResolvable("cjpm")) {
             return "missing-cangjie-cjpm"
         }
         if (!isProgramResolvable("cjc")) {
             return "missing-cangjie-cjc"
+        }
+        if (projectKind == "cangjie-harmonyos" && action == "build") {
+            return "package-provider-required"
         }
         return "toolchain-ready"
     }
@@ -849,12 +878,15 @@ func projectToolchainQuestions(projectKind: String, action: String, project: Str
         if ((action == "dev" || action == "push") && !isProgramResolvable(config.hdcPath)) {
             questions.add("请提供可执行 hdc 路径；可写入 happub.toml 的 hdcPath，或设置 HAP_HARMONY_HDC。")
         }
-    } else if (projectKind == "cangjie") {
+    } else if (projectKind == "cangjie" || projectKind == "cangjie-harmonyos") {
         if (!isProgramResolvable("cjpm")) {
             questions.add("请提供 cjpm 所在路径并放入 PATH；HapCLI 当前按固定 cjpm build/test 调用，不接收任意 shell。")
         }
         if (!isProgramResolvable("cjc")) {
             questions.add("请提供 cjc 所在路径并放入 PATH；用于确认仓颉 SDK 可用。")
+        }
+        if (projectKind == "cangjie-harmonyos" && action == "build") {
+            questions.add("请提供通过独立审计的 Cangjie HarmonyOS 固定打包 Provider；当前只输出 inspect/build/package 计划，不执行或生成 HAP/HSP/HAR。")
         }
     } else if (projectKind == "kotlin-multiplatform") {
         if (!hasKmpGradleRunner(project)) {
@@ -885,10 +917,10 @@ func projectToolchainValidationCommands(projectKind: String, action: String, pro
             commands.add(config.hdcPath + " list targets")
         }
         commands.add("hap project detect --project " + configShellPathHint("<project>") + " --platform harmonyos")
-    } else if (projectKind == "cangjie") {
+    } else if (projectKind == "cangjie" || projectKind == "cangjie-harmonyos") {
         commands.add("cjpm --version")
         commands.add("cjc --version")
-        commands.add("hap project detect --project " + configShellPathHint("<project>") + " --platform cangjie")
+        commands.add("hap project detect --project " + configShellPathHint("<project>") + " --platform " + projectKind)
     } else if (projectKind == "kotlin-multiplatform") {
         commands.add("./gradlew --version")
         commands.add("java -version")

@@ -2,7 +2,7 @@
   cjc-version = "1.1.0"
   name = "hapcli"
   description = "HapCLI flagship open-source core seed"
-  version = "0.1.0"
+  version = "0.3.0"
   license = "Apache-2.0"
   output-type = "executable"
   src-dir = "src"

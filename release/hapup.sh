@@ -1,23 +1,26 @@
 #!/bin/sh
 set -eu
 
-VERSION="0.1.0-preview.2"
+VERSION="0.3.0"
 
 usage() {
   cat <<'EOF'
 Usage:
   hapup version
   hapup help
+  hapup install [--version latest|<version>] [--target auto|<target>] [--install-dir <dir>] [--no-path]
   hapup install-from-manifest --manifest <path|file://...|https://...> --install-dir <dir> [--target auto|darwin-arm64|darwin-amd64|linux-amd64|linux-arm64] [--manifest-sha256 <sha256>] [--receipt <path>] [--review-token <token>] [--allow-system-dir] [--allow-unverified-manifest]
   hapup install-flagship --asset <path|file://...|https://...> --sha256 <sha256> --install-dir <dir> [--receipt <path>] [--review-token <token>] [--allow-system-dir]
   hapup restore-flagship --install-dir <dir> [--backup <path>] [--receipt <path>] [--review-token <token>] [--allow-system-dir]
   hapup install-cangjie-sdk --archive <path|file://...|https://...> --target ohos-arm64 --install-root <dir> [--version <version>] [--sha256 <sha256>|--allow-unverified] [--receipt <path>] [--review-token <token>] [--replace] [--binary-sign-tool <path>] [--no-sign-ohos-binaries]
 
 Hapup is the thin bootstrap companion for HapCLI.
-It installs a reviewed flagship asset only when asset path, checksum, install
-directory, and review token are explicit. Reviewed SDK archive install is local
+The install command resolves an official release, verifies its manifest and binary,
+and installs into ~/.local/bin by default. No review token is needed. It adds a
+backed-up shell PATH hook unless --no-path is given. Advanced asset installation
+requires an explicit asset, checksum, destination and review token. Reviewed SDK archive install is local
 and receipt-backed; Hapup does not manage SDK versions, mutate project manifests,
-or silently write shell rc files.
+or install system dependencies.
 EOF
 }
 
@@ -134,7 +137,7 @@ copy_asset() {
   case "$asset" in
     http://*|https://*)
       if command -v curl >/dev/null 2>&1; then
-        curl -fsSL "$asset" -o "$output"
+        curl --proto =https --proto-redir =https --tlsv1.2 --connect-timeout 30 --max-time 900 --retry 2 -fsSL "$asset" -o "$output"
       elif command -v wget >/dev/null 2>&1; then
         wget -q "$asset" -O "$output"
       else
@@ -952,14 +955,98 @@ restore_flagship() {
   printf 'hap restored: %s\n' "$INSTALLED_BIN"
 }
 
-case "${1:-help}" in
+
+# The public entry point owns release discovery. Low-level reviewed APIs stay available.
+install_release() (
+  HP_VERSION=latest
+  HP_TARGET=auto
+  HP_DIR="${HOME:?HOME is required}/.local/bin"
+  HP_PATH=true
+  while [ "$#" -gt 0 ]; do
+    case "$1" in
+      --version|--target|--install-dir)
+        [ "$#" -ge 2 ] && [ -n "$2" ] || fail "missing value for $1"
+        case "$1" in
+          --version) HP_VERSION=$2 ;;
+          --target) HP_TARGET=$2 ;;
+          --install-dir) HP_DIR=$2 ;;
+        esac
+        shift 2 ;;
+      --version=*) HP_VERSION=${1#*=}; shift ;;
+      --target=*) HP_TARGET=${1#*=}; shift ;;
+      --install-dir=*) HP_DIR=${1#*=}; shift ;;
+      --no-path) HP_PATH=false; shift ;;
+      *) fail "unknown install option: $1" ;;
+    esac
+  done
+  HP_TARGET=$(canonical_install_target "$HP_TARGET")
+  HP_DIR=$(prepare_install_dir "$HP_DIR")
+  unsafe_install_dir "$HP_DIR" && fail "use a user-owned install directory"
+  HP_WORK=$(secure_temp_dir release)
+  trap 'rm -rf "$HP_WORK"' 0
+  trap 'exit 130' HUP INT TERM
+  if [ "$HP_VERSION" = latest ]; then
+    copy_asset https://api.github.com/repos/HapPub/Hap/releases/latest "$HP_WORK/latest.json"
+    HP_TAG=$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$HP_WORK/latest.json" | head -n 1)
+  else
+    HP_TAG="v${HP_VERSION#v}"
+  fi
+  printf '%s\n' "$HP_TAG" | LC_ALL=C grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$' || fail "invalid or unavailable release version"
+  HP_BASE="https://github.com/HapPub/Hap/releases/download/$HP_TAG"
+  copy_asset "$HP_BASE/manifest.v0.json" "$HP_WORK/manifest.v0.json"
+  copy_asset "$HP_BASE/manifest.v0.json.sha256" "$HP_WORK/manifest.sha256"
+  HP_SHA=$(awk 'NR == 1 {print $1}' "$HP_WORK/manifest.sha256")
+  printf '%s\n' "$HP_SHA" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$' || fail "invalid manifest SHA-256"
+  verify_checksum "$HP_WORK/manifest.v0.json" "$HP_SHA" || fail "release manifest checksum rejected"
+  # Use the pinned URL for relative asset resolution and retain its provenance in the receipt.
+  (install_from_manifest --manifest "$HP_BASE/manifest.v0.json" --manifest-sha256 "$HP_SHA" \
+    --target "$HP_TARGET" --install-dir "$HP_DIR" --receipt "$HP_DIR/hap-install-receipt.json" --review-token install-requested)
+  # Preserve this entry point for future installs, including an initial invocation via sh.
+  if [ -f "$0" ]; then
+    cp "$0" "$HP_WORK/hapup"
+  else
+    copy_asset "$HP_BASE/hapup.sh" "$HP_WORK/hapup"
+    copy_asset "$HP_BASE/hapup.sh.sha256" "$HP_WORK/hapup.sha256"
+    HP_SCRIPT_SHA=$(awk 'NR == 1 {print $1}' "$HP_WORK/hapup.sha256")
+    printf '%s\n' "$HP_SCRIPT_SHA" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$' || fail "invalid hapup SHA-256"
+    verify_checksum "$HP_WORK/hapup" "$HP_SCRIPT_SHA" || fail "hapup checksum rejected"
+  fi
+  cp "$HP_WORK/hapup" "$HP_DIR/.hapup-new"
+  chmod 755 "$HP_DIR/.hapup-new"
+  mv -f "$HP_DIR/.hapup-new" "$HP_DIR/hapup"
+  if [ "$HP_PATH" = true ]; then
+    HP_QUOTED=$(printf '%s' "$HP_DIR" | sed "s/'/'\\\\''/g")
+    HP_HOOK="case \":\$PATH:\" in *:'$HP_QUOTED':*) ;; *) export PATH='$HP_QUOTED':\"\$PATH\" ;; esac # HapCLI PATH"
+    set -- "$HOME/.profile" "$HOME/.bashrc" "$HOME/.zshrc"
+    if [ -f "$HOME/.bash_profile" ]; then set -- "$@" "$HOME/.bash_profile"
+    elif [ -f "$HOME/.bash_login" ]; then set -- "$@" "$HOME/.bash_login"; fi
+    for HP_RC in "$@"; do
+      if [ -f "$HP_RC" ] && grep -Fqx "$HP_HOOK" "$HP_RC"; then continue; fi
+      if [ -e "$HP_RC" ] && [ ! -e "$HP_RC.hap-backup" ]; then cp -p "$HP_RC" "$HP_RC.hap-backup"; fi
+      printf '\n%s\n' "$HP_HOOK" >> "$HP_RC"
+    done
+  fi
+  printf 'HapCLI %s installed for %s.\n' "$HP_TAG" "$HP_TARGET"
+  if [ "$HP_PATH" = true ]; then printf 'New terminals can use hap and hapup.\n'; fi
+  printf 'For this terminal: export PATH="%s:$PATH"\n' "$HP_DIR"
+)
+
+case "${1:-install}" in
   version|--version|-V)
     printf 'hapup %s\n' "$VERSION"
     ;;
   help|--help|-h)
     usage
     ;;
-  install|install-flagship)
+  install)
+    [ "$#" -eq 0 ] || shift
+    # Keep the historical explicit-asset alias compatible.
+    case " $* " in
+      *' --asset '*|*' --asset='*) install_flagship "$@" ;;
+      *) install_release "$@" ;;
+    esac
+    ;;
+  install-flagship)
     shift
     install_flagship "$@"
     ;;

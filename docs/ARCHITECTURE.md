@@ -20,12 +20,27 @@ profiles, toolchain providers, CI workflow diagnosis, and release metadata are
 read-only by default. Their output is structured so humans and automation can
 review the same facts.
 
+The Cangjie-native HarmonyOS inspector is a separate detection lane. It reads
+the root app/workspace contract and bounded member manifests, then projects an
+HAP/HSP/HAR module graph. Generic Cangjie and hvigor HarmonyOS remain separate
+project kinds. The corresponding package-provider surface is contract-first and
+plan-only: until a reviewed fixed provider exists, plans report
+`package-provider-required` and cannot route into the hvigor/HDC executor.
+
 ### Fixed execution adapters
 
 Execution-capable commands construct fixed argv for known tools such as `cjpm`,
 `hvigorw`, `hdc`, Gradle, `xcodebuild`, and `xcrun devicectl`. They do not accept
 arbitrary shell command text. Semantic output checks are applied when a tool can
 return exit code `0` while reporting failure in its output.
+
+The HarmonyOS `prnt` adapter is a strict sequence rather than a generic screen
+tool: it requests geometry through `aa start`, resolves the bundle PID, binds
+that PID to the WindowManagerService table, captures the resulting display, and
+crops only the actual WMS rectangle with a fixed ImageMagick adapter. The
+macOS `sips` CLI is intentionally rejected because its ignored offset can make
+pixels disagree with the WMS receipt. Requested and actual geometry remain
+separate receipt fields.
 
 ### Local private state
 

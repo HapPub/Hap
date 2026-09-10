@@ -2,6 +2,8 @@ package hapcli
 
 public func canonicalTargetName(target: String): String {
     match (target) {
+        case "ohos" => "ohos-arm64"
+        case "harmonyos" => "ohos-arm64"
         case "linux-amd64" => "linux-amd64"
         case "linux-x64" => "linux-amd64"
         case "x86_64-unknown-linux-gnu" => "linux-amd64"

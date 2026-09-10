@@ -68,7 +68,7 @@ if grep -R -E 'uses:[[:space:]]+actions/(checkout|upload-artifact|download-artif
   fail_test "official release actions must be pinned to commit SHAs"
 fi
 
-(cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.0 >/dev/null)
+(cd "$ROOT" && bash scripts/ci/validate-release.sh v0.3.0 >/dev/null)
 if (cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.1 >/dev/null 2>&1); then
   fail_test "mismatched tag was accepted"
 fi

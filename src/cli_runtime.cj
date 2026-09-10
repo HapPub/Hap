@@ -67,7 +67,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "project") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap project detect --project <path> [--platform auto|harmonyos|ios|kmp|cangjie]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap project detect --project <path> [--platform auto|harmonyos|cangjie-harmonyos|ios|kmp|cangjie]"))
             return 2
         }
         let action = commandLine[2]
@@ -88,13 +88,23 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         println(output)
         return hapDeviceCommandExitCode(output)
     }
+    if (command == "prnt") {
+        let options = resolveHapPrntOptions(commandLine, 2)
+        let output = if (options.plan) { renderHapPrntPlanJson(options) } else { runHapPrnt(options) }
+        println(output)
+        return hapPrntExitCode(output)
+    }
     if (command == "build") {
         if (shouldUseAutoProjectActionForBuild(commandLine, 2)) {
             let options = resolveProjectActionOptions("build", commandLine, 2)
             if (options.executeReviewed) {
-                let output = runHarmonyReviewedExecution(options)
-                println(output)
-                return projectActionExecutionExitCodeFromJson(output)
+                if (shouldUseHarmonyLocalDevExecution(options)) {
+                    let output = runHarmonyReviewedExecution(options)
+                    println(output)
+                    return projectActionExecutionExitCodeFromJson(output)
+                }
+                println(renderProjectActionPlanJson(options))
+                return 3
             }
             println(renderProjectActionPlanJson(options))
             return 0
@@ -113,9 +123,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     if (command == "test") {
         let options = resolveProjectActionOptions("test", commandLine, 2)
         if (options.executeReviewed) {
-            let output = runHarmonyReviewedExecution(options)
-            println(output)
-            return projectActionExecutionExitCodeFromJson(output)
+            if (shouldUseHarmonyLocalDevExecution(options)) {
+                let output = runHarmonyReviewedExecution(options)
+                println(output)
+                return projectActionExecutionExitCodeFromJson(output)
+            }
+            println(renderProjectActionPlanJson(options))
+            return 3
         }
         println(renderProjectActionPlanJson(options))
         return 0
@@ -182,9 +196,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     if (command == "push") {
         let options = resolveProjectActionOptions("push", commandLine, 2)
         if (options.executeReviewed) {
-            let output = runHarmonyReviewedExecution(options)
-            println(output)
-            return projectActionExecutionExitCodeFromJson(output)
+            if (shouldUseHarmonyLocalDevExecution(options)) {
+                let output = runHarmonyReviewedExecution(options)
+                println(output)
+                return projectActionExecutionExitCodeFromJson(output)
+            }
+            println(renderProjectActionPlanJson(options))
+            return 3
         }
         println(renderProjectActionPlanJson(options))
         return 0
@@ -337,10 +355,21 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "install") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap install <doctor|replace-plan|restore-plan|receipt-readback> ..."))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap install <cangjie|cangjie-sdk|cangjie-stdx>[@version] | <doctor|replace-plan|restore-plan|receipt-readback> ..."))
             return 2
         }
         let action = commandLine[2]
+        if (action == "cangjie" || action == "cangjie-sdk" || action == "cangjie-stdx" || startsWithText(action, "cangjie@") || startsWithText(action, "cangjie-sdk@") || startsWithText(action, "cangjie-stdx@")) {
+            if (shouldOfferCangjieInstallTui(commandLine) && cangjieInstallInteractiveTerminalAvailable()) {
+                let output = runCangjiePackageInstallTui()
+                println(output)
+                return cangjiePackageInstallExitCode(output)
+            }
+            let options = resolveCangjiePackageInstallOptions(commandLine, 2)
+            let output = if (options.plan) { renderCangjiePackageInstallPlanJson(options) } else { runCangjiePackageInstall(options) }
+            println(output)
+            return cangjiePackageInstallExitCode(output)
+        }
         if (action == "doctor") {
             println(renderInstallDoctorJson(resolveInstallDoctorOptions(commandLine, 3)))
             return 0
@@ -458,10 +487,20 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "get") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie|jdk|android|ohos|harmonyos|cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
             return 2
         }
         let subject = commandLine[2]
+        if (subject == "jdk" || subject == "semeru" || subject == "android" || subject == "ohos" || subject == "openharmony" || subject == "harmonyos") {
+            let output = runSdkToolchainGet(commandLine)
+            println(output)
+            return cangjieToolchainGetExitCode(output)
+        }
+        if (subject == "cangjie") {
+            let output = runCangjieToolchainGet(commandLine)
+            println(output)
+            return cangjieToolchainGetExitCode(output)
+        }
         if (subject == "cangjie-stdx") {
             println(renderCangjieStdxGetPlanJson(resolveCangjieStdxGetOptions(commandLine, 3)))
             return 0
@@ -668,13 +707,20 @@ public func renderHapCliHelp(): String {
     "  inspect-cjpm <cjpm.toml>                         Inspect Cangjie cjpm dependency profile and emit JSON\n" +
     "  plan-switch <cjpm.toml> <profiles.toml> <target>  Preview a read-only dependency profile switch plan\n" +
     "  apply-switch <cjpm.toml> <profiles.toml> <target> Write reviewed switch output and receipt, never in-place by default\n" +
-    "  project detect --project <path>                  Detect HarmonyOS/iOS/KMP/Cangjie project adapter candidates\n" +
+    "  project detect --project <path>                  Detect HarmonyOS/Cangjie-HarmonyOS/iOS/KMP/Cangjie adapter candidates\n" +
     "  device [--project <path>] [--all] [--json]      List project-relevant HDC/ADB/CoreDevice targets and aliases\n" +
     "         [--no-probe] [--timeout-seconds N]       Bound fixed backend probes or read aliases without probing\n" +
     "  device set                                      Open keyboard device alias/default manager\n" +
     "  device set --alias <name> --platform <kind> --target <id>\n" +
     "  device set --default <alias> | --rename old:new | --delete <alias>\n" +
     "                                                     Manage the same registry non-interactively for agents/CI\n" +
+    "  prnt --project <path> --device <target|alias>     Start a HarmonyOS window, verify WMS, capture and crop it\n" +
+    "       --layoutType Phone --ratio 16:9              Phone: 16:9, 18:9, 21:9\n" +
+    "       --layoutType Tablet --ratio Fold4:3          Tablet/Fold: Fold4:3, Fold√2:1, Fold1.15:1, 16:9, 3:2, 7:5\n" +
+    "       --layoutType PC --ratio 2in1                 PC: 2in1; trible requires explicit --width and --height\n" +
+    "       [--left N --top N] [--output-dir <path>]     Resize first; crop the PID-bound actual WMS rectangle\n" +
+    "       [--keep-running] [--plan]                    Cold launch by default; preserve current UI state on recapture\n" +
+    "       [--bundle B --ability A --module M]          Override inferred application identity\n" +
     "  build --plan --platform <kind>                   Plan fixed adapter build command templates without executing\n" +
     "  build --platform harmonyos --execute-reviewed    Run fixed HarmonyOS adapter only after review token and receipt\n" +
     "  test --project <path> [--lint]                   Plan fixed adapter test command templates without executing\n" +
@@ -696,6 +742,9 @@ public func renderHapCliHelp(): String {
     "  record cangjie.stdx --target <target>            Learn stdx target parameters from an existing cjpm project\n" +
     "  doctorfix cangjie.stdx --target <target>         Plan or write a recorded stdx target repair with backup\n" +
     "  build --project <path> --target <target>          Run fixed cjpm build with bounded environment/stdx repair\n" +
+    "       [--toolchain-bootstrap|--no-toolchain-bootstrap]\n" +
+    "       [--sdk-version V] [--region auto|global|zh-cn] [--toolchain-cache-root P]\n" +
+    "                                                     Bootstrap missing Cangjie SDK/stdx into Hap private cache\n" +
     "  bundle --project <path> [--skip-lint]             Run fixed cjpm bundle after central dependency topology diagnosis\n" +
     "       [--env-fix|--no-env-fix] [--openssl-lib P]   Use verified child-process-only OpenSSL environment repair\n" +
     "  cjpm graph discover-manifests --root <dir>        Discover cjpm manifests under explicit roots\n" +
@@ -715,6 +764,21 @@ public func renderHapCliHelp(): String {
     "  ci executor-snippet                               Emit a reviewed CI snippet for executor adoption review\n" +
     "  ci hosted-proof-pack                              Write a non-mutating hosted CI proof workflow pack\n" +
     "  release manifest                                  Emit release asset/checksum truth without publishing assets\n" +
+    "  get jdk --provider semeru --version 17|21       Install IBM Open Edition JDK from GitHub Releases\n" +
+    "  get android --version 36 --accept-licenses     Install SDK, build-tools and private JDK; --ndk/--cmake optional\n" +
+    "  get ohos --version 6.0 [--profile native]       Install OpenHarmony SDK and native toolchain\n" +
+    "  get harmonyos --accept-licenses                Install public Linux CLT; other builds use --archive/--url + --sha256\n" +
+    "    SDK options: --plan --no-activate --install-root PATH --archive PATH --sha256 HEX\n" +
+    "  get cangjie [--version sts|1.1.3|lts|nightly]    Download, verify, install SDK + matching stdx, and activate\n" +
+    "       [--plan] [--no-activate]                    Read-only preview, or install without changing shell defaults\n" +
+    "  install cangjie[@version]                        Exact no-option command opens TUI; explicit forms install the SDK\n" +
+    "  install cangjie-sdk[@version]                    Explicit SDK package name; same payload as cangjie\n" +
+    "  install cangjie-stdx[@version]                   Install the matching official stdx binary package separately\n" +
+    "       [--target <target>] [--install-root <path>]  Omitted/latest/lts is pinned LTS; nightly resolves dynamically\n" +
+    "                                                     Exact bounded nightly tags are also accepted\n" +
+    "       [--region auto|global|zh-cn]                HapPub mirror first; zh-cn prepends allowlisted accelerators\n" +
+    "       [--route auto|mirror|ghfast|ghproxy|official] Probe fastest or force one exact reviewed route\n" +
+    "       [--plan] [--proxy|--no-proxy]               Plan is read-only; installs never edit projects, rc files, or system SDKs\n" +
     "  install doctor --brewfile <path>|--formula <path> Diagnose tap/brew/action bootstrap config without installing\n" +
     "  install replace-plan --asset <path|url>           Review hapup flagship replacement inputs without installing\n" +
     "  install restore-plan --install-dir <dir>          Review hapup flagship restore inputs without restoring\n" +

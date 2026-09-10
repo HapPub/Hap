@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="Local first" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="Toolchain glue" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -28,6 +28,23 @@ manager. It detects project and environment facts, produces reviewable plans,
 executes a bounded set of fixed tool adapters, and records structured results.
 
 ## Quick Start
+
+Version 0.2.0 adds a user-facing installer. With the new bootstrap companion:
+
+```bash
+hapup install
+hap get cangjie --version sts
+# Or select an exact SDK: hap get cangjie --version 1.1.3
+```
+
+The second command downloads and verifies SDK 1.1.3 and matching stdx 1.1.3.1,
+compiles and runs a smoke program, then configures the default shell environment.
+New terminals load it automatically; use the returned `activationHint` in the
+current terminal. `--plan` previews without writes or network requests;
+`--no-activate` installs files only. See [installation](docs/INSTALLATION.md).
+These commands require 0.2.0; the old 0.1.0 release does not implement them.
+The checksum bootstrap below also works with older releases; the release page
+is the authority for which versions are actually downloadable.
 
 Verified release binaries are available for Linux AMD64, Linux ARM64, and
 macOS ARM64. Download Hapup and the generated manifest, verify both files, then
@@ -85,7 +102,10 @@ from native jobs that completed build, test, checksum, and `hap version` gates.
 
 ## Core Capabilities
 
-- Detect Cangjie/cjpm, HarmonyOS, iOS, and Compose Multiplatform project shapes.
+- Detect generic Cangjie/cjpm, Cangjie-native HarmonyOS package workspaces,
+  hvigor HarmonyOS, iOS, and Compose Multiplatform project shapes.
+- Inspect Cangjie-native HarmonyOS `[app]` / `[workspace]` manifests and expose
+  their HAP/HSP/HAR module graph before any package provider is selected.
 - Inspect `cjpm.toml` dependency profiles and diagnose local `path` versus
   remote `git` drift.
 - Record a known-good stdx target profile and plan or apply a backed-up repair
@@ -93,8 +113,14 @@ from native jobs that completed build, test, checksum, and `hap version` gates.
 - Run fixed `cjpm build` and `cjpm bundle` actions with bounded environment
   diagnosis, one reviewed repair attempt, and central-repository dependency
   ordering guidance.
+- Install official Cangjie SDK or stdx release packages into Hap private
+  storage with exact package specs, pinned LTS resolution, SHA-256 gates, and
+  no project, shell profile, or system SDK mutation.
 - Build, install, launch, and verify HarmonyOS applications through fixed
   `hvigor` and `hdc` commands.
+- Start a debug-signed HarmonyOS window at a named Phone/Tablet/Fold/PC layout,
+  verify its actual PID-bound WMS rectangle, and crop a structured screenshot
+  receipt from the full display.
 - Remember reviewed HarmonyOS device aliases and recent USB-proven wireless
   endpoints without scanning the local network.
 - Run Compose Multiplatform desktop applications and build/install/launch iOS
@@ -114,16 +140,47 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-The two `get` commands emit plans; they do not download or install from this
-surface. `global` routes to the byte-preserving
+`cangjie` is an alias for `cangjie-sdk`; `cangjie-stdx` remains a separate
+package. An omitted version, `@latest`, or `@lts` resolves to the pinned latest
+LTS (`1.0.5`); `@1.1.3` remains the exact STS line. `@nightly` dynamically
+resolves the newest validated prerelease, while an exact bounded nightly tag
+such as `@1.3.0-alpha.20260828010050` remains reproducible. Installs default to
+`~/.hap/toolchains`; explicit roots are restricted to `HOME/.hap` or an OS
+temporary directory. `--plan` performs no download or filesystem write.
+
+Run the exact command `hap install cangjie` in a terminal to open the
+interactive installer. It lets you choose LTS, STS, or the currently resolved
+nightly, measures the current
+HTTPS latency of the reviewed mirror, Mainland accelerators, and official
+source, then offers automatic-fastest or one forced route before final
+confirmation. A failed probe is displayed as unreachable, not as a fabricated
+latency. Scripts, redirected input, explicit package versions, and `--plan`
+remain non-interactive. Agents and CI can use
+`--route auto|mirror|ghfast|ghproxy|official`; an exact forced route never
+silently falls back. Probe timing is transport evidence only and never replaces
+the pinned SHA-256 authority.
+
+The two older `get` commands remain plan-only acquisition surfaces. Real
+nightly installs are now available through `install`, and `--plan` deliberately
+reports pending dynamic resolution without contacting the network. HapCLI treats
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` as a schema-gated
+supplementary dictionary, then falls back to the live HapPub mirror index when
+the dictionary is absent, stale, or is a website fallback rather than JSON.
+The selected release's exact `manifest.v1.json` remains the asset and SHA-256
+authority. For stable/LTS installs, `global` routes to the byte-preserving
 [CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror) first, while
-`zh-cn` routes to the original GitCode release first. Both built-in routes use
-the mirror's `manifest.v1.json` as their SHA-256 authority. An explicit
-`--provider-url` stays custom and has no silent fallback.
+`zh-cn` prepends allowlisted acceleration prefixes to the same mirror, then
+falls back to the direct mirror and official source. Accelerators never become
+checksum authorities.
 
 For reviewed GitHub Actions and other hosted runners, the repository provides
 a real mirror-to-environment bridge:
@@ -150,10 +207,35 @@ hap device --project .
 hap dev --project .
 hap dev --project . --device demo-phone
 hap dev --project . --device 192.0.2.40:5555 -v
+hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
+hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
+
+Pure Cangjie HarmonyOS workspaces are reported as `cangjie-harmonyos`, distinct
+from hvigor projects and ordinary Cangjie packages:
+
+```bash
+hap project detect --project ./native-harmony-app
+hap build --project ./native-harmony-app --platform cangjie-harmonyos --plan
+```
+
+The detector reads the root `[app]` and `[workspace]` tables plus member
+`[hap]`, `[hsp]`, and `[har]` tables. Packaging is deliberately fail-closed:
+the build plan returns `package-provider-required` until a separately reviewed,
+fixed-argv provider with structured receipts is available. HapCLI does not
+silently adopt an external packager, generate HAP bytes, sign, install, or
+launch from this plan-only surface.
 
 `hap dev` auto-selects the workflow when exactly one supported project type is
 present. Use `--platform` only for mixed or ambiguous directories.
+
+`hap prnt` resolves and requests the window size before it queries WMS and
+captures the display. Phone supports `16:9`, `18:9`, and `21:9`; Tablet/Fold
+supports `Fold4:3`, `Fold√2:1`, `Fold1.15:1`, `16:9`, `3:2`, and `7:5`; PC
+supports `2in1`. The literal `trible` profile is accepted only with explicit
+`--width` and `--height`, so HapCLI does not invent a ratio. See the
+[command reference](docs/COMMAND_REFERENCE.md#harmonyos-window-capture) for
+platform and screenshot-ownership limits.
 
 ### Kotlin Multiplatform
 
@@ -181,6 +263,7 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | OHOS ARM64/AMD64 | Nightly cross-build and link verification available | The artifacts are not runtime-smoked on an OHOS device and require a compatible target Cangjie runtime. |
 | Windows ARM64/x86 | Upstream gap recorded | The mirrored Cangjie release has no matching native host SDK, so HapCLI does not relabel another architecture as support. |
 | HarmonyOS applications | Real build/install/launch workflow available | Requires a working DevEco toolchain, authorized device, and valid signing profile. |
+| Cangjie-native HarmonyOS packages | Detection, HAP/HSP/HAR module graph, and provider plan available | Package generation remains fail-closed until a reviewed fixed provider is integrated. |
 | KMP desktop on macOS | Real Gradle build/run verified | Other desktop hosts require separate field verification. |
 | KMP iOS/iPadOS | Build/install/launch implementation available | Apple account, certificate, profile, development team, paired device, and CoreDevice readiness remain host prerequisites. |
 | Android device listing | Read-only ADB discovery available | APK build/install orchestration is not implemented. |
@@ -211,6 +294,26 @@ Supported values are `auto`, `global`, and `zh-cn`:
 ```toml
 downloadRegion = "auto"
 ```
+
+For Cangjie projects, `hap build --target ohos` enables a flagship-only
+toolchain bootstrap by default. If `cjpm` or the selected target stdx is not
+available, Hap resolves one exact SDK/stdx pair from the mirror manifest,
+checks downloaded archives against its SHA-256 values, installs them under a
+private cache, and exposes them only to the fixed build child process:
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+Use `--no-toolchain-bootstrap` to disable it. SDK/stdx bootstrap does not
+install or prove the OpenHarmony native sysroot, signing assets, runtime, or
+device acceptance.
 
 Device aliases use the same local-first fallback model. Public examples use
 synthetic identifiers; do not commit real serial numbers, UDIDs, LAN endpoints,
@@ -271,3 +374,5 @@ issue.
 
 HapCLI is released under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE)
 for project attribution.
+
+SDK and JDK installation: `hap get jdk --provider semeru --version 17`, `hap get android --version 36 --accept-licenses`, and `hap get ohos --version 6.0 --profile native`. See [SDK installation](docs/SDK_TOOLCHAINS.md) for HarmonyOS packages, platform availability, licensing and verification.

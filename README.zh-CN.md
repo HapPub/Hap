@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="本地优先" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="工具链兼容层" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -23,6 +23,25 @@ HapCLI 是一套开源命令行兼容层，主要解决项目在开发机、CI�
 HapCLI 不替代 `cjpm`、Gradle、Xcode、DevEco Studio、`hdc` 或包管理器。它负责识别项目与环境事实，输出可审查的方案，调用有限且固定的工具适配器，并记录结构化结果。
 
 ## 快速开始
+
+0.2.0 新增面向使用者的安装入口。已有新版 `hapup` 时，一条命令安装 HapCLI 本体：
+
+```bash
+hapup install
+```
+
+安装新版 HapCLI 后，以下命令会真实下载、校验并安装 SDK 与配套 stdx，验证编译运行后配置默认环境：
+
+```bash
+hap get cangjie --version sts
+# 精确指定版本：hap get cangjie --version 1.1.3
+```
+
+`sts` 对应 SDK 1.1.3 + stdx 1.1.3.1；无需手动找 tag、checksum 或编写 recipe。
+新终端自动加载，当前终端执行输出中的 `activationHint` 即可生效。
+`--plan` 只预览，`--no-activate` 只安装。详细行为和失败恢复见
+[安装说明](docs/INSTALLATION.md)。这些入口需要 0.2.0；旧版 0.1.0 不具备此能力。
+以下校验引导方式也适用于旧版发布包，实际可下载版本以发布页为准。
 
 发布页提供 Linux AMD64、Linux ARM64 与 macOS ARM64 的验证二进制。先下载 Hapup
 和由真实产物生成的 manifest，校验两者后，再安装当前主机对应的二进制：
@@ -79,11 +98,15 @@ hap help
 
 ## 核心能力
 
-- 识别仓颉/cjpm、HarmonyOS、iOS 和 Compose Multiplatform 项目。
+- 区分普通仓颉/cjpm、仓颉原生 HarmonyOS 打包工作区、hvigor HarmonyOS、iOS 和 Compose Multiplatform 项目。
+- 在选择打包 Provider 之前，只读检查仓颉原生 HarmonyOS 的 `[app]` / `[workspace]` 与 HAP/HSP/HAR 模块图。
 - 检查 `cjpm.toml`，诊断本地 `path` 依赖与远端 `git` 依赖的差异。
 - 从可构建项目记录 stdx 目标配置，在其他项目中规划或写入带备份的修复。
 - 执行固定的 `cjpm build` 和 `cjpm bundle`，提供受限的环境诊断、一次修复重试和中心仓依赖发布顺序提示。
+- 通过精确包规格、固定 LTS 解析与 SHA-256 门禁，把官方仓颉 SDK 或 stdx 安装到 Hap 私有目录；不修改项目、shell 配置或系统 SDK。
 - 通过固定的 `hvigor` 与 `hdc` 命令构建、安装、启动和验证 HarmonyOS 应用。
+- 按 Phone/Tablet/Fold/PC 布局先请求 HarmonyOS 窗口尺寸，再用 bundle PID
+  绑定 WMS 实际矩形，截取 display 并生成结构化窗口截图回执。
 - 保存经过确认的 HarmonyOS 设备别名和最近一次 USB 证明的无线端点，不扫描局域网。
 - 运行 Compose Multiplatform 桌面应用；在主机已有有效 Apple 签名资产时构建、安装和启动 iOS 应用。
 - 诊断 GitHub Actions 并生成可审查的 CI 脚本，CLI 不直接修改工作流文件。
@@ -99,14 +122,40 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-两个 `get` 命令只输出方案，不在这个入口直接下载或安装。`global` 优先使用按原字节搬运的
-[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn`
-优先使用 GitCode 原始 release；两个内置渠道都以镜像的 `manifest.v1.json` 作为
-SHA-256 依据。显式传入 `--provider-url` 时保持自定义渠道，不静默回退。
+`cangjie` 是 `cangjie-sdk` 的别名；`cangjie-stdx` 始终是独立包。省略版本、
+`@latest` 或 `@lts` 都固定解析到当前 LTS `1.0.5`；`@1.1.3` 保持精确 STS；
+`@nightly` 动态解析最新且通过校验的预发布版本，也可用
+`@1.3.0-alpha.20260828010050` 这样的有界精确 nightly 标签复现安装。
+默认安装到 `~/.hap/toolchains`；显式根目录只能位于 `HOME/.hap` 或操作系统临时目录内。
+`--plan` 不下载也不写文件。
+
+在交互终端中直接运行 `hap install cangjie` 会打开安装 TUI：先选择 LTS、STS 或
+当前动态解析出的 nightly，
+再对受审阅的 HapPub 镜像、中国大陆加速线路和官方源执行有界 HTTPS 延迟观测，
+随后可选择“自动采用当前最快成功线路”或强制指定一条线路，并在最终确认后安装。
+探测失败会明确显示“不可达”，不会伪造延迟。脚本、重定向输入、显式版本和
+`--plan` 仍保持非交互；Agent/CI 可使用
+`--route auto|mirror|ghfast|ghproxy|official`，强制线路不会静默回退。测速只证明
+本次传输状态，不替代固定 SHA-256 校验权威。
+
+两个旧 `get` 命令仍保留为只生成方案的获取入口；真实 nightly 安装现已由 `install`
+支持。`--plan` 会报告等待动态解析且完全不访问网络。HapCLI 将
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` 作为经过 schema 校验的补充字典；
+字典缺失、过期，或返回官网 HTML 而非 JSON 时，会回退到 HapPub Mirror 的实时索引。
+最终版本对应的精确 `manifest.v1.json` 仍是资产与 SHA-256 权威。
+真实稳定/LTS 安装中，`global` 优先使用
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror)，`zh-cn` 在同一
+镜像 URL 前添加受控加速前缀，然后回退到直连镜像与官方源；加速器不是校验权威。
+字节级校验始终由精确镜像 `manifest.v1.json` 与固定 SHA-256 决定。
 
 ### HarmonyOS 应用开发
 
@@ -116,7 +165,28 @@ hap device --project .
 hap dev --project .
 hap dev --project . --device demo-phone
 hap dev --project . --device 192.0.2.40:5555 -v
+hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
+hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
+
+纯仓颉 HarmonyOS 工作区会被识别为独立的 `cangjie-harmonyos`，不会再折叠成
+普通 `cangjie`，也不会与 hvigor 工程混为一谈：
+
+```bash
+hap project detect --project ./native-harmony-app
+hap build --project ./native-harmony-app --platform cangjie-harmonyos --plan
+```
+
+检测器读取根清单的 `[app]` / `[workspace]`，以及成员清单的 `[hap]`、
+`[hsp]`、`[har]`。打包能力默认 fail-close：在独立审计、固定 argv 且能输出
+结构化回执的 Provider 接入前，构建计划返回 `package-provider-required`；这一
+入口不会静默采用外部打包器，也不会生成、签名、安装或启动 HAP。
+
+`hap prnt` 严格按“窗口参数 → PID/WMS 实际矩形 → display 截图 → 实际矩形裁剪”
+执行。Phone 支持 `16:9`、`18:9`、`21:9`；Tablet/Fold 支持
+`Fold4:3`、`Fold√2:1`、`Fold1.15:1`、`16:9`、`3:2`、`7:5`；PC 支持
+`2in1`。字面值 `trible` 仅在同时提供 `--width` 和 `--height` 时接受，
+避免工具擅自猜比例。外部截图仍可能包含遮挡物，不能代替视觉验收。
 
 当目录中只有一种受支持项目时，`hap dev` 会自动选择流程。只有混合目录或无法明确识别时，才需要 `--platform`。
 
@@ -146,6 +216,7 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | OHOS ARM64/AMD64 | nightly 交叉构建和链接验证可用 | 产物尚未在 OHOS 设备上执行运行时自检，并依赖兼容的目标端仓颉运行时。 |
 | Windows ARM64/x86 | 已记录上游缺口 | 当前镜像的仓颉发布没有匹配的原生宿主 SDK，因此 HapCLI 不会把其他架构改名后声称支持。 |
 | HarmonyOS 应用 | 已有真实构建、安装和启动流程 | 需要可用的 DevEco 工具链、已授权设备和有效签名配置。 |
+| 仓颉原生 HarmonyOS 包 | 已有检测、HAP/HSP/HAR 模块图与 Provider 计划 | 在受审固定 Provider 接入前，包生成保持 fail-close。 |
 | macOS KMP Desktop | 已验证真实 Gradle 构建与运行 | 其他桌面平台仍需单独现场验证。 |
 | KMP iOS/iPadOS | 已实现构建、安装和启动 | Apple 账号、证书、描述文件、开发团队、已配对设备和 CoreDevice 状态仍由主机提供。 |
 | Android 设备列表 | 支持只读 ADB 识别 | 尚未实现 APK 构建和安装编排。 |
@@ -174,6 +245,23 @@ HapCLI 按以下顺序读取私有配置：
 ```toml
 downloadRegion = "auto"
 ```
+
+对于仓颉项目，旗舰版 `hap build --target ohos` 默认启用工具链自举。如果当前
+环境缺少 `cjpm` 或目标 stdx，Hap 会从镜像 manifest 精确解析一组 SDK/stdx，
+按 SHA-256 校验下载归档，安装到私有缓存，并且只向固定构建子进程暴露：
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+可以用 `--no-toolchain-bootstrap` 关闭。SDK/stdx 自举不会安装或证明
+OpenHarmony native sysroot、签名资产、运行时或设备验收。
 
 设备别名使用同样的本地优先回退方式。公开示例只使用合成标识；请勿提交真实设备序列号、UDID、局域网地址、令牌、回执或设备记忆文件。
 
@@ -217,3 +305,5 @@ HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提�
 ## 许可证
 
 HapCLI 使用 [Apache License 2.0](LICENSE) 发布。项目归属说明见 [NOTICE](NOTICE)。
+
+SDK 与 JDK 硬安装：`hap get jdk --provider semeru --version 17`、`hap get android --version 36 --accept-licenses`、`hap get ohos --version 6.0 --profile native`。HarmonyOS 安装包、平台范围、许可与验证说明见 [SDK 安装指南](docs/SDK_TOOLCHAINS.md)。

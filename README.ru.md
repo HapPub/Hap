@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="Локальная работа прежде всего" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="Слой совместимости инструментов" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -23,6 +23,22 @@ HapCLI — это открытый слой совместимости кома�
 HapCLI не заменяет `cjpm`, Gradle, Xcode, DevEco Studio, `hdc` или менеджер пакетов. Он определяет фактическое состояние проекта и среды, создает проверяемый план, запускает ограниченный набор фиксированных адаптеров и сохраняет структурированный результат.
 
 ## Быстрый старт
+
+Версия 0.2.0 добавляет простой путь установки. С новым Hapup:
+
+```bash
+hapup install
+hap get cangjie --version sts
+# Точная версия: hap get cangjie --version 1.1.3
+```
+
+HapCLI загружает и проверяет SDK 1.1.3 и stdx 1.1.3.1, компилирует и запускает
+тестовую программу, затем настраивает среду новых терминалов. В текущем терминале
+выполните команду из `activationHint`. `--plan` не обращается к сети и не меняет
+файлы; `--no-activate` только устанавливает файлы. См. [установку](docs/INSTALLATION.md).
+Для этих команд нужна версия 0.2.0; старый релиз 0.1.0 их не поддерживает.
+Пример ниже также работает со старыми релизами; доступность версий определяется
+страницей релизов.
 
 На странице релиза доступны проверенные бинарные файлы для Linux AMD64,
 Linux ARM64 и macOS ARM64. Сначала загрузите Hapup и манифест, созданный из
@@ -81,14 +97,19 @@ hap help
 
 ## Основные возможности
 
-- Определение проектов Cangjie/cjpm, HarmonyOS, iOS и Compose Multiplatform.
+- Раздельное определение обычных проектов Cangjie/cjpm, нативных пакетных рабочих пространств HarmonyOS на Cangjie, проектов HarmonyOS на hvigor, iOS и Compose Multiplatform.
+- Проверка таблиц `[app]` / `[workspace]` и графа модулей HAP/HSP/HAR до выбора поставщика упаковки.
 - Проверка `cjpm.toml` и диагностика расхождений между локальными зависимостями `path` и удаленными зависимостями `git`.
 - Запись рабочего профиля stdx и планирование либо применение исправления с резервной копией в другом проекте.
 - Запуск фиксированных действий `cjpm build` и `cjpm bundle` с ограниченной диагностикой среды, одной проверяемой попыткой исправления и подсказкой о порядке публикации зависимостей в центральном репозитории.
 - Сборка, установка, запуск и проверка приложений HarmonyOS через фиксированные команды `hvigor` и `hdc`.
+- Запрос размера окна HarmonyOS для профилей Phone/Tablet/Fold/PC, привязка
+  фактического прямоугольника WMS к PID пакета и создание структурированной
+  квитанции снимка окна.
 - Хранение подтвержденных псевдонимов устройств HarmonyOS и последних беспроводных адресов, доказанных через USB, без сканирования локальной сети.
 - Запуск настольных приложений Compose Multiplatform и сборка, установка и запуск iOS-приложений при наличии действующих средств подписи Apple на хосте.
 - Диагностика GitHub Actions и создание проверяемых CI-сценариев без изменения workflow-файлов самим CLI.
+- Установка официальных пакетов Cangjie SDK и stdx в приватный каталог Hap с точной версией, фиксированным LTS и обязательной проверкой SHA-256.
 - Краткий вывод по умолчанию; `-v` или `--verbose` включает структурированные подробности, а `--write-receipt` создает явный отчет для агента или CI.
 
 ## Типовые сценарии
@@ -101,16 +122,47 @@ hap record cangjie.stdx --project . --target x86_64-unknown-linux-gnu
 hap doctorfix cangjie.stdx --project . --target x86_64-unknown-linux-gnu --plan
 hap build --project . --target x86_64-unknown-linux-gnu
 hap bundle --project . --skip-lint
+hap install cangjie@latest --target macos-arm64 --region auto
+hap install cangjie-sdk@1.1.3 --target linux-amd64 --region global
+hap install cangjie-stdx@1.1.3 --target macos-arm64 --region zh-cn
+hap install cangjie@nightly --target macos-arm64 --route auto
+hap install cangjie@latest --target macos-arm64 --plan
 hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/runtimes"
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-Обе команды `get` только формируют план и не выполняют загрузку или установку.
-Для `global` сначала используется побайтовое зеркало
-[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а для `zh-cn`
-сначала используется исходный release GitCode. В обоих встроенных маршрутах
-источником SHA-256 служит `manifest.v1.json` зеркала. Явный
-`--provider-url` остается пользовательским и не получает скрытого fallback.
+`cangjie` — псевдоним `cangjie-sdk`; `cangjie-stdx` остается отдельным пакетом.
+Версия по умолчанию, `@latest` и `@lts` фиксируются на LTS `1.0.5`, а
+`@1.1.3` остается точной STS-линией. `@nightly` динамически выбирает новейший
+проверенный prerelease; точный ограниченный nightly-тег, например
+`@1.3.0-alpha.20260828010050`, остаётся воспроизводимым. Установка идет в
+`~/.hap/toolchains`;
+явный корень допускается только внутри `HOME/.hap` или временного каталога ОС.
+`--plan` не загружает и не изменяет файлы.
+
+Точная команда `hap install cangjie` в интерактивном терминале открывает TUI:
+пользователь выбирает LTS, STS или текущий динамически найденный nightly, видит
+ограниченное по времени HTTPS-измерение
+зеркала, разрешённых ускорителей и официального источника, затем выбирает
+автоматически самый быстрый успешный маршрут либо один принудительный маршрут.
+Скрипты, перенаправленный ввод, явные версии и `--plan` остаются
+неинтерактивными. Для Agent/CI доступен
+`--route auto|mirror|ghfast|ghproxy|official`; принудительный маршрут не имеет
+скрытого fallback. Задержка является только транспортным наблюдением и не
+заменяет закреплённый SHA-256.
+
+Старые команды `get` остаются только планами получения. Реальная установка
+nightly теперь доступна через `install`; `--plan` сообщает об ожидающем
+динамическом разрешении без сетевого запроса. HapCLI использует
+`https://cli.hap.pub/manifests/cangjie-install-v1.json` как дополнительный
+словарь со строгой проверкой schema и при его отсутствии, устаревании или HTML
+fallback обращается к живому индексу HapPub Mirror. Точный `manifest.v1.json`
+выбранного выпуска остаётся источником списка файлов и SHA-256. Для стабильной установки
+`global` сначала использует побайтовое зеркало
+[CangjieSDK-Mirror](https://github.com/HapPub/CangjieSDK-Mirror), а `zh-cn`
+добавляет разрешенные ускоряющие префиксы к тому же URL, затем использует
+прямое зеркало и официальный источник. Ускоритель не является источником
+контрольной суммы.
 
 ### Разработка приложений HarmonyOS
 
@@ -120,7 +172,30 @@ hap device --project .
 hap dev --project .
 hap dev --project . --device demo-phone
 hap dev --project . --device 192.0.2.40:5555 -v
+hap prnt --project . --device demo-pc --layoutType Phone --ratio 18:9 --plan
+hap prnt --project . --device demo-pc --layoutType Tablet/Fold4:3
 ```
+
+Чистое рабочее пространство HarmonyOS на Cangjie определяется как отдельный
+тип `cangjie-harmonyos`, а не как обычный `cangjie` или проект hvigor:
+
+```bash
+hap project detect --project ./native-harmony-app
+hap build --project ./native-harmony-app --platform cangjie-harmonyos --plan
+```
+
+Детектор читает `[app]` / `[workspace]` корневого манифеста и `[hap]`, `[hsp]`,
+`[har]` модулей. Упаковка закрыта по умолчанию: план возвращает
+`package-provider-required`, пока не подключен отдельно проверенный поставщик с
+фиксированными argv и структурированными квитанциями. Этот режим не создает,
+не подписывает, не устанавливает и не запускает HAP.
+
+`hap prnt` сначала задает геометрию окна, затем проверяет PID и фактический
+прямоугольник WMS, снимает весь дисплей и обрезает его по данным WMS. Профили:
+Phone — `16:9`, `18:9`, `21:9`; Tablet/Fold — `Fold4:3`, `Fold√2:1`,
+`Fold1.15:1`, `16:9`, `3:2`, `7:5`; PC — `2in1`. Значение `trible`
+принимается только вместе с `--width` и `--height`, без выдуманного соотношения.
+Внешний снимок может содержать перекрывающие окна и не заменяет визуальную приемку.
 
 Если в каталоге найден только один поддерживаемый тип проекта, `hap dev` выбирает процесс автоматически. Параметр `--platform` нужен только для смешанных или неоднозначных каталогов.
 
@@ -150,6 +225,7 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | OHOS ARM64/AMD64 | Доступна nightly cross-сборка с проверкой линковки | Артефакты не запускались на устройстве OHOS и требуют совместимой целевой среды выполнения Cangjie. |
 | Windows ARM64/x86 | Зафиксирован пробел upstream | В зеркальном выпуске Cangjie нет подходящего нативного host SDK; другая архитектура не выдается за поддержку. |
 | Приложения HarmonyOS | Доступен реальный процесс сборки, установки и запуска | Нужны рабочие инструменты DevEco, авторизованное устройство и действующий профиль подписи. |
+| Нативные пакеты HarmonyOS на Cangjie | Доступны определение, граф HAP/HSP/HAR и план поставщика | Создание пакетов закрыто до интеграции проверенного фиксированного поставщика. |
 | KMP Desktop на macOS | Проверен реальный запуск через Gradle | Другие настольные хосты требуют отдельной проверки. |
 | KMP iOS/iPadOS | Реализованы сборка, установка и запуск | Учетная запись Apple, сертификат, профиль, команда разработки, сопряженное устройство и готовность CoreDevice остаются требованиями хоста. |
 | Список Android-устройств | Доступно определение ADB только для чтения | Автоматизация сборки и установки APK пока не реализована. |
@@ -180,6 +256,26 @@ HapCLI читает приватную конфигурацию в следую�
 ```toml
 downloadRegion = "auto"
 ```
+
+Для проектов Cangjie флагманская команда `hap build --target ohos` по
+умолчанию включает bootstrap toolchain. Если отсутствует `cjpm` или целевой
+stdx, Hap выбирает точную пару SDK/stdx из manifest зеркала, проверяет
+загруженные архивы по SHA-256, устанавливает их в приватный кеш и передает
+окружение только фиксированному дочернему процессу сборки:
+
+```toml
+toolchainAutoBootstrap = true
+cangjieSdkVersion = "auto"
+toolchainCacheRoot = "/absolute/path/to/hap-toolchains"
+toolchainBootstrapTimeoutSeconds = 900
+toolchainDownloadRetryCount = 2
+downloadAcceleration = "auto"
+downloadAccelerators = ["https://ghfast.top/", "https://ghproxy.link/"]
+```
+
+Отключение выполняется через `--no-toolchain-bootstrap`. Bootstrap SDK/stdx
+не устанавливает и не подтверждает native sysroot OpenHarmony, подпись,
+runtime или приемку на устройстве.
 
 Псевдонимы устройств используют ту же локальную схему резервных путей. В публичных примерах применяются только синтетические идентификаторы. Не добавляйте в репозиторий реальные серийные номера, UDID, адреса локальной сети, токены, отчеты или файлы памяти устройств.
 
@@ -223,3 +319,5 @@ HapCLI не является официальным инструментом Can
 ## Лицензия
 
 HapCLI распространяется по [Apache License 2.0](LICENSE). Сведения об авторстве проекта находятся в [NOTICE](NOTICE).
+
+Установка SDK и JDK: `hap get jdk --provider semeru --version 17`, `hap get android --version 36 --accept-licenses`, `hap get ohos --version 6.0 --profile native`. Пакеты HarmonyOS, поддерживаемые платформы и проверки описаны в [руководстве](docs/SDK_TOOLCHAINS.md).
