@@ -16,7 +16,12 @@ the portable fallback.
 
 ## Release Procedure
 
-1. Update the version in `cjpm.toml` and `src/hapcli.cj` in the same pull request.
+1. Update the version in `cjpm.toml`, `src/hapcli.cj`, `release/hapup.sh`,
+   `release/manifest.v0.json` and `src/release_manifest.cj` in the same pull request.
+   Refresh the Hapup SHA-256 in both preview manifests after changing its version.
+   Synchronize all three README source badges and current-version installation
+   examples; keep minimum supported versions and historical release examples
+   distinct from the current source version.
 2. Run the public, installer-security, and release-workflow tests.
 3. Merge the reviewed commit to `main`.
 4. Create and push `v<version>` at that exact commit.

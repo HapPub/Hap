@@ -1,5 +1,8 @@
 # SDK and JDK installation
 
+Requires **HapCLI 0.3.0 or newer**. Check `hap version`; see
+[installation and source builds](INSTALLATION.md) if your binary is older.
+
 `hap get` downloads an archive, checks SHA-256, installs components, runs native
 verification, writes a receipt, and selects an environment. These commands execute
 installation; `--plan` performs no network requests or filesystem writes.
@@ -35,6 +38,15 @@ an availability or installation claim. Missing upstream assets fail explicitly;
 HapCLI does not substitute another architecture. No Python, pip or npm dependency
 is added to the installer: it uses the native HapCLI binary and the host's curl,
 tar, unzip, find, shell and SHA-256 utility.
+
+## Validation coverage
+
+macOS ARM64 acceptance covers real Semeru 17 release downloads and Java
+compilation/execution, plus OpenHarmony 6.0 native/full installation and OHOS
+object compilation. Android and HarmonyOS controlled integration checks pass,
+but live upstream acceptance remains incomplete for Android downloads and the
+current macOS HarmonyOS package. Catalog entries are not cross-platform
+certification; application builds and device execution need separate verification.
 
 ## Android
 
