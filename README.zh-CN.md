@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
+  <img src="https://img.shields.io/badge/source-0.3.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Source 0.3.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="本地优先" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="工具链兼容层" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -10,7 +10,7 @@
 <span style="font-weight:100;font-size:24px">本地优先的工具链兼容与修复工具</span>
 <p align="center">
   <strong>先检查，再规划修复；只执行固定适配器，并保留回执。</strong><br/>
-  <sub>仓颉 · cjpm · stdx · HarmonyOS · Kotlin Multiplatform · CI</sub>
+  <sub>仓颉 · Semeru JDK · Android SDK · OpenHarmony · HarmonyOS · KMP</sub>
 </p>
 </div>
 
@@ -18,83 +18,59 @@
 
 ## HapCLI 是什么
 
-HapCLI 是一套开源命令行兼容层，主要解决项目在开发机、CI、云端和连接设备之间切换时出现的工具链配置漂移。目前重点支持仓颉/cjpm、HarmonyOS 应用开发和 Kotlin Multiplatform 工作流。
+HapCLI 是一套开源命令行兼容层，主要解决项目在开发机、CI、云端和连接设备之间切换时出现的工具链配置漂移。它提供仓颉与 SDK/JDK 工具链安装，并支持仓颉/cjpm、HarmonyOS 应用开发和 Kotlin Multiplatform 工作流。
 
 HapCLI 不替代 `cjpm`、Gradle、Xcode、DevEco Studio、`hdc` 或包管理器。它负责识别项目与环境事实，输出可审查的方案，调用有限且固定的工具适配器，并记录结构化结果。
 
 ## 快速开始
 
-0.2.0 新增面向使用者的安装入口。已有新版 `hapup` 时，一条命令安装 HapCLI 本体：
+本说明对应**源码版本 0.3.0**。可下载的版本和主机资产以
+[GitHub Releases](https://github.com/HapPub/Hap/releases) 为准；源码版本徽章不代表对应二进制已经发布。
+
+已有 0.2.0 或更新版本的 Hapup 时，可安装最新已发布的 HapCLI：
 
 ```bash
 hapup install
+hap version
 ```
 
-安装新版 HapCLI 后，以下命令会真实下载、校验并安装 SDK 与配套 stdx，验证编译运行后配置默认环境：
+首次安装见[安装说明](docs/INSTALLATION.md)。如果已发布二进制还不支持下面的命令，
+可[从当前源码构建](docs/INSTALLATION.md#build-from-source)。
+完整仓颉安装需要 HapCLI 0.2.0 或更新版本；SDK/JDK 安装需要 **0.3.0 或更新版本**。
+
+### 安装工具链
 
 ```bash
 hap get cangjie --version sts
 # 精确指定版本：hap get cangjie --version 1.1.3
+hap get jdk --provider semeru --version 17
+hap get android --version 36 --accept-licenses
+hap get ohos --version 6.0 --profile native
 ```
 
-`sts` 对应 SDK 1.1.3 + stdx 1.1.3.1；无需手动找 tag、checksum 或编写 recipe。
-新终端自动加载，当前终端执行输出中的 `activationHint` 即可生效。
-`--plan` 只预览，`--no-activate` 只安装。详细行为和失败恢复见
-[安装说明](docs/INSTALLATION.md)。这些入口需要 0.2.0；旧版 0.1.0 不具备此能力。
-以下校验引导方式也适用于旧版发布包，实际可下载版本以发布页为准。
+仓颉 `sts` 会自动配对 SDK **1.1.3** 与 stdx **1.1.3.1**，无需手动查找不同的发布标签。
+安装器完成下载、校验和工具验证后，再激活私有环境。新终端自动加载，当前终端执行返回的
+`activationHint` 即可。`--plan` 不联网、不写文件；`--no-activate` 只安装，不切换当前选择。
 
-发布页提供 Linux AMD64、Linux ARM64 与 macOS ARM64 的验证二进制。先下载 Hapup
-和由真实产物生成的 manifest，校验两者后，再安装当前主机对应的二进制：
+SDK/JDK 安装目前在**本机 macOS/Linux** 执行；Windows 和跨主机目标只提供计划。
+各提供方的目录范围不同，例如 HarmonyOS 内置目录目前对应 **Linux x64**：
 
 ```bash
-VERSION=0.1.0
-BASE="https://github.com/HapPub/Hap/releases/download/v$VERSION"
-WORK="$(mktemp -d)"
-cd "$WORK"
-curl -fsSLO "$BASE/hapup.sh" -O "$BASE/hapup.sh.sha256"
-curl -fsSLO "$BASE/manifest.v0.json" -O "$BASE/manifest.v0.json.sha256"
-if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum -c hapup.sh.sha256
-  sha256sum -c manifest.v0.json.sha256
-else
-  shasum -a 256 -c hapup.sh.sha256
-  shasum -a 256 -c manifest.v0.json.sha256
-fi
-sh ./hapup.sh install-from-manifest \
-  --manifest ./manifest.v0.json \
-  --install-dir "$HOME/.local/bin" \
-  --review-token reviewed
-"$HOME/.local/bin/hap" version
+hap get harmonyos --version 5.1.0.840 --accept-licenses
 ```
 
-源码包始终作为可移植回退。源码构建需要仓颉 SDK 与 `cjpm` 1.1.x；macOS
-构建前先提供当前 SDK 路径：
+其他 HarmonyOS 主机或版本需要官方归档，或 HTTPS 地址及 SHA-256。
+使用 `--accept-licenses` 前请阅读提供方的许可条款。
+Android NDK/CMake、平台范围、私有 Java 启动器和多环境共存见
+[SDK/JDK 安装指南](docs/SDK_TOOLCHAINS.md)。
 
-```bash
-export SDKROOT="$(xcrun --show-sdk-path)"
-```
-
-构建并安装到用户目录：
-
-```bash
-cjpm build
-mkdir -p "$HOME/.local/bin"
-cp ./target/release/bin/main "$HOME/.local/bin/hap"
-chmod +x "$HOME/.local/bin/hap"
-hap version
-```
-
-在项目目录执行第一组只读检查：
+### 检查项目
 
 ```bash
 hap project detect --project .
 hap toolchain providers
 hap help
 ```
-
-仓库内的 [`release/manifest.v0.json`](release/manifest.v0.json) 记录源码预览面；
-每个 GitHub Release 会根据真正完成构建、测试、checksum 和 `hap version` 闸门的
-原生任务重新生成发布 manifest。
 
 ## 核心能力
 
@@ -103,7 +79,8 @@ hap help
 - 检查 `cjpm.toml`，诊断本地 `path` 依赖与远端 `git` 依赖的差异。
 - 从可构建项目记录 stdx 目标配置，在其他项目中规划或写入带备份的修复。
 - 执行固定的 `cjpm build` 和 `cjpm bundle`，提供受限的环境诊断、一次修复重试和中心仓依赖发布顺序提示。
-- 通过精确包规格、固定 LTS 解析与 SHA-256 门禁，把官方仓颉 SDK 或 stdx 安装到 Hap 私有目录；不修改项目、shell 配置或系统 SDK。
+- `hap get cangjie` 安装完整 SDK/stdx，验证编译运行后备份并配置 shell 环境；单组件 `hap install cangjie*` 保留只安装、不改 shell 的契约。
+- 安装 Semeru JDK、Android SDK 与可选 NDK/CMake、OpenHarmony SDK 和 HarmonyOS Command Line Tools，校验包与工具并分别管理环境；可用范围取决于提供方和主机。
 - 通过固定的 `hvigor` 与 `hdc` 命令构建、安装、启动和验证 HarmonyOS 应用。
 - 按 Phone/Tablet/Fold/PC 布局先请求 HarmonyOS 窗口尺寸，再用 bundle PID
   绑定 WMS 实际矩形，截取 display 并生成结构化窗口截图回执。
@@ -131,7 +108,7 @@ hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto -
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-`cangjie` 是 `cangjie-sdk` 的别名；`cangjie-stdx` 始终是独立包。省略版本、
+在单组件 `hap install` 接口中，`cangjie` 是 `cangjie-sdk` 的别名；`cangjie-stdx` 始终是独立包。省略版本、
 `@latest` 或 `@lts` 都固定解析到当前 LTS `1.0.5`；`@1.1.3` 保持精确 STS；
 `@nightly` 动态解析最新且通过校验的预发布版本，也可用
 `@1.3.0-alpha.20260828010050` 这样的有界精确 nightly 标签复现安装。
@@ -210,6 +187,11 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 
 | 能力面 | 状态 | 真实边界 |
 | --- | --- | --- |
+| SDK/JDK 安装 | 本机 macOS/Linux 执行；Windows/跨主机只提供计划 | 下列提供方范围与 HapCLI 二进制可用平台分别说明。 |
+| IBM Semeru JDK | 从 GitHub Release 安装；macOS ARM64 已验证 Java 编译运行 | 需要匹配的 Open Edition JDK 资产；不代表兼容所有 Gradle 项目。 |
+| Android SDK/NDK/CMake | 目录覆盖 macOS Intel/ARM、Linux x64；受控集成通过 | 真实上游下载验收尚未完成；需要接受提供方条款并使用兼容 Java。 |
+| OpenHarmony SDK | 6.0 目录覆盖 macOS Intel/ARM、Linux x64；macOS ARM64 native/full 已验证 | SDK 6.0.0.47 / API 20；目标对象编译不代表设备运行验收。 |
+| HarmonyOS Command Line Tools | 内置 Linux x64 5.1.0.840 目录；支持官方归档/URL | 当前 macOS 真包验收尚未完成；其他主机或版本需要官方资产和 SHA-256。 |
 | macOS arm64 仓颉/cjpm | 源码、测试和标签发布链已验证 | 当前仓颉 1.1.3 静态运行时对象要求 macOS 13.3，即使链接目标设置得更低也不能证明更老系统可运行。 |
 | Linux AMD64/ARM64 仓颉/cjpm | 已有标签发布链 | 每个发布必须由对应原生 Runner 完成构建、测试和二进制自检。 |
 | Windows AMD64 与 macOS Intel | nightly 原生构建链已验证 | 稳定版 `v0.1.0` 不变；nightly 二进制必须在匹配的托管 Runner 通过构建、测试、打包和 `hap version`。 |
@@ -284,6 +266,8 @@ GitHub 的公开面工作流会检查文档、发布元数据、Shell 语法、c
 
 ## 文档
 
+- [HapCLI 与仓颉安装](docs/INSTALLATION.md)
+- [SDK 与 JDK 安装](docs/SDK_TOOLCHAINS.md)
 - [命令参考](docs/COMMAND_REFERENCE.md)
 - [架构](docs/ARCHITECTURE.md)
 - [stdx 自学习与 doctorfix](docs/STDX_SELF_LEARNING_AND_DOCTORFIX.md)
@@ -294,7 +278,7 @@ GitHub 的公开面工作流会检查文档、发布元数据、Shell 语法、c
 
 ## 项目边界
 
-HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提供包注册中心，不承担 SDK 版本管理，也不会静默重写项目清单；第三方镜像和设备工具链是否可用仍取决于外部环境。
+HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提供包注册中心，不提供覆盖所有 SDK 的通用管理器，也不会静默重写项目清单；第三方镜像和设备工具链是否可用仍取决于外部环境。
 
 完整 CLI 与源码以 Apache License 2.0 开源。商业支持可以覆盖集成、迁移、培训、部署协助和服务等级承诺，但不会通过隐藏的专有版本解锁 CLI 功能。
 
@@ -305,5 +289,3 @@ HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提�
 ## 许可证
 
 HapCLI 使用 [Apache License 2.0](LICENSE) 发布。项目归属说明见 [NOTICE](NOTICE)。
-
-SDK 与 JDK 硬安装：`hap get jdk --provider semeru --version 17`、`hap get android --version 36 --accept-licenses`、`hap get ohos --version 6.0 --profile native`。HarmonyOS 安装包、平台范围、许可与验证说明见 [SDK 安装指南](docs/SDK_TOOLCHAINS.md)。

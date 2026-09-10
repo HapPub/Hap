@@ -52,6 +52,24 @@ if grep -Fq -- 'no hidden runtime/stdx install inside flagship' "$ROOT/docs/STDX
   fail_test "stdx/runtime boundary still denies the explicit package install surface"
 fi
 
+python3 - "$ROOT" <<'PYDOC'
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+package = re.search(r'(?m)^\[package\]\s*$(.*?)(?=^\[|\Z)',
+                    (root / "cjpm.toml").read_text(), re.S)
+version = re.search(r'(?m)^\s*version\s*=\s*"([^"\n]+)"', package.group(1)).group(1)
+for name in ("README.md", "README.zh-CN.md", "README.ru.md"):
+    text = (root / name).read_text()
+    badges = re.findall(r'img\.shields\.io/badge/(?:source|version)-([0-9]+\.[0-9]+\.[0-9]+)-', text)
+    if badges != [version]:
+        raise SystemExit(f"{name}: source badge {badges} != package version {version}")
+    if f'alt="Source {version}"' not in text:
+        raise SystemExit(f"{name}: source badge label is out of date")
+PYDOC
+
 sh -n "$ROOT/release/hapup.sh"
 
 python3 - "$ROOT/release/manifest.v0.json" <<'PY'

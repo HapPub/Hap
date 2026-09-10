@@ -1,18 +1,24 @@
 # Installing HapCLI and Cangjie
 
-These user-facing commands require HapCLI / Hapup 0.2.0. Check `hap version`
-before using them. A source checkout or local build does not publish a GitHub
-release; `hapup install` selects only a release that actually exists there.
+`hapup install` and complete `hap get cangjie` installation require version
+**0.2.0 or newer**. The SDK/JDK commands require HapCLI **0.3.0 or newer**.
+Check `hap version` before using them. A source checkout or local build does not
+publish a GitHub release; `hapup install` selects only a release that actually exists there.
 
 ## Install HapCLI itself
 
-With the new bootstrap companion downloaded from a verified release:
+With a verified Hapup 0.2.0 or newer downloaded from a published release:
 
 ```sh
 sh hapup.sh install
-# After the first install:
-hapup install --version 0.2.0
+# Subsequent updates:
+hapup install
+hap version
 ```
+
+Use `hapup install --version VERSION` to select an exact **published** version.
+Replace `VERSION` with a release tag's version; this does not install a source branch.
+If the available release predates the feature you need, build from source below.
 
 An omitted action also installs. The installer detects the host, resolves the
 latest release once and pins its tag, verifies the manifest's SHA-256 and the
@@ -28,6 +34,59 @@ they are not an independent signature of the publisher.
 `--target` and `--install-dir` select a different published target or user
 location. Advanced `install-from-manifest` and `install-flagship` commands remain
 available, with their explicit checksum and review-token contracts.
+
+## First installation from an older release
+
+The following compatibility example selects the published **v0.1.0** assets.
+It installs that older binary, which does **not** provide the newer one-command
+or SDK/JDK interfaces. Check [GitHub Releases](https://github.com/HapPub/Hap/releases)
+for available versions and matching host assets. A checked-in preview manifest
+is not a published binary inventory.
+
+```bash
+VERSION=0.1.0
+BASE="https://github.com/HapPub/Hap/releases/download/v$VERSION"
+WORK="$(mktemp -d)"
+cd "$WORK"
+curl -fsSLO "$BASE/hapup.sh" -O "$BASE/hapup.sh.sha256"
+curl -fsSLO "$BASE/manifest.v0.json" -O "$BASE/manifest.v0.json.sha256"
+if command -v sha256sum >/dev/null 2>&1; then
+  sha256sum -c hapup.sh.sha256
+  sha256sum -c manifest.v0.json.sha256
+else
+  shasum -a 256 -c hapup.sh.sha256
+  shasum -a 256 -c manifest.v0.json.sha256
+fi
+sh ./hapup.sh install-from-manifest \
+  --manifest ./manifest.v0.json \
+  --install-dir "$HOME/.local/bin" \
+  --review-token reviewed
+"$HOME/.local/bin/hap" version
+```
+
+## Build from source
+
+Use this route when the published binary does not yet include the commands in
+this checkout. Cangjie SDK and `cjpm` 1.1.x must already be available. On macOS,
+first expose the Apple SDK with `export SDKROOT="$(xcrun --show-sdk-path)"`.
+From the source checkout:
+
+```sh
+cjpm build
+mkdir -p "$HOME/.local/bin"
+cp ./target/release/bin/main "$HOME/.local/bin/hap"
+cp ./release/hapup.sh "$HOME/.local/bin/hapup"
+chmod +x "$HOME/.local/bin/hap" "$HOME/.local/bin/hapup"
+export PATH="$HOME/.local/bin:$PATH"
+hap version
+hapup version
+```
+
+Both entrypoints should report this checkout's version, **0.3.0**. These commands
+make them available in the current shell; add the same PATH entry to your shell
+startup file if it is not already present. Running this source-built `hapup install`
+still selects a published release; it does not publish or preserve an unreleased
+source build. Native binaries require a compatible host and runtime.
 
 ## Install and activate a complete Cangjie toolchain
 

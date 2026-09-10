@@ -42,6 +42,21 @@ macOS `sips` CLI is intentionally rejected because its ignored offset can make
 pixels disagree with the WMS receipt. Requested and actual geometry remain
 separate receipt fields.
 
+### Toolchain installation and activation
+
+`hap get cangjie` composes SDK and matching stdx installation, verifies native
+compilation/execution and activates a managed shell environment. The lower-level
+`hap install cangjie*` interface remains component-only and does not change shell
+selection. The older `get cangjie-sdk/stdx` commands remain planners.
+
+`src/sdk_toolchain_get.cj` coordinates Semeru, Android, OpenHarmony and HarmonyOS
+installation; `sdk_toolchain_catalog.cj` resolves supported vendor assets, and
+`sdk_toolchain_adapters.cj` handles extraction, native checks and launchers.
+Provider-specific selections coexist in atomic `~/.hap/env.sh` blocks. Downloads,
+checksums and tool verification must pass before activation; failure preserves
+the previous selection. `--plan` makes no network requests or writes.
+See [SDK/JDK installation](SDK_TOOLCHAINS.md) for host and catalog limits.
+
 ### Local private state
 
 Configuration, stdx records, device aliases, receipts, logs, and trusted device
@@ -51,11 +66,13 @@ real device or environment evidence.
 
 ### Bootstrap and release
 
-`release/hapup.sh` verifies reviewed assets, installs or restores the flagship
-binary, and can deploy a reviewed HarmonyOS Cangjie SDK archive. It remains a
-bootstrap companion rather than a second implementation of HapCLI product
-logic. `release/manifest.v0.json` is the release-channel truth and is mirrored
-to the static Hap.Pub site before publication.
+`release/hapup.sh` resolves a published release, verifies manifest and asset
+checksums, and installs `hap` plus its bootstrap companion with backed-up PATH
+hooks. Explicit asset/manifest install and restore interfaces remain available.
+It also retains the low-level HarmonyOS Cangjie SDK archive adapter.
+`release/manifest.v0.json` records the source preview; it does not prove that
+matching binaries or a live-site update have been published. Each GitHub Release
+carries a generated manifest containing only assets from successful native jobs.
 
 ## Execution Flow
 
@@ -72,5 +89,5 @@ request
 ## Non-Goals
 
 HapCLI is not a general shell runner, package registry, package-manager
-replacement, SDK version manager, workflow mutator, or substitute for platform
+replacement, universal SDK manager, workflow mutator, or substitute for platform
 signing and device authorization.

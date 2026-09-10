@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
+  <img src="https://img.shields.io/badge/source-0.3.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Source 0.3.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="Локальная работа прежде всего" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="Слой совместимости инструментов" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -10,7 +10,7 @@
 <span style="font-weight:100;font-size:24px">Локальный слой совместимости и восстановления инструментов</span>
 <p align="center">
   <strong>Сначала проверка, затем план исправления, фиксированные адаптеры и проверяемый отчет.</strong><br/>
-  <sub>Cangjie · cjpm · stdx · HarmonyOS · Kotlin Multiplatform · CI</sub>
+  <sub>Cangjie · Semeru JDK · Android SDK · OpenHarmony · HarmonyOS · KMP</sub>
 </p>
 </div>
 
@@ -18,82 +18,66 @@
 
 ## Что такое HapCLI
 
-HapCLI — это открытый слой совместимости командной строки для проектов, в которых настройки инструментов различаются между компьютером разработчика, CI, облачным сервером и подключенным устройством. Сейчас основное внимание уделяется Cangjie/cjpm, разработке приложений HarmonyOS и процессам Kotlin Multiplatform.
+HapCLI — это открытый слой совместимости командной строки для проектов, в которых настройки инструментов различаются между компьютером разработчика, CI, облачным сервером и подключенным устройством. Он устанавливает Cangjie и инструменты SDK/JDK, поддерживает Cangjie/cjpm, разработку приложений HarmonyOS и процессы Kotlin Multiplatform.
 
 HapCLI не заменяет `cjpm`, Gradle, Xcode, DevEco Studio, `hdc` или менеджер пакетов. Он определяет фактическое состояние проекта и среды, создает проверяемый план, запускает ограниченный набор фиксированных адаптеров и сохраняет структурированный результат.
 
 ## Быстрый старт
 
-Версия 0.2.0 добавляет простой путь установки. С новым Hapup:
+Это руководство описывает **исходный код версии 0.3.0**. Доступные версии и
+бинарные файлы перечислены в [GitHub Releases](https://github.com/HapPub/Hap/releases).
+Версия исходного кода не означает, что соответствующий бинарный релиз уже опубликован.
+
+Если установлен Hapup 0.2.0 или новее, установите последний опубликованный HapCLI:
 
 ```bash
 hapup install
-hap get cangjie --version sts
-# Точная версия: hap get cangjie --version 1.1.3
-```
-
-HapCLI загружает и проверяет SDK 1.1.3 и stdx 1.1.3.1, компилирует и запускает
-тестовую программу, затем настраивает среду новых терминалов. В текущем терминале
-выполните команду из `activationHint`. `--plan` не обращается к сети и не меняет
-файлы; `--no-activate` только устанавливает файлы. См. [установку](docs/INSTALLATION.md).
-Для этих команд нужна версия 0.2.0; старый релиз 0.1.0 их не поддерживает.
-Пример ниже также работает со старыми релизами; доступность версий определяется
-страницей релизов.
-
-На странице релиза доступны проверенные бинарные файлы для Linux AMD64,
-Linux ARM64 и macOS ARM64. Сначала загрузите Hapup и манифест, созданный из
-реальных артефактов, проверьте оба файла и установите бинарный файл для хоста:
-
-```bash
-VERSION=0.1.0
-BASE="https://github.com/HapPub/Hap/releases/download/v$VERSION"
-WORK="$(mktemp -d)"
-cd "$WORK"
-curl -fsSLO "$BASE/hapup.sh" -O "$BASE/hapup.sh.sha256"
-curl -fsSLO "$BASE/manifest.v0.json" -O "$BASE/manifest.v0.json.sha256"
-if command -v sha256sum >/dev/null 2>&1; then
-  sha256sum -c hapup.sh.sha256
-  sha256sum -c manifest.v0.json.sha256
-else
-  shasum -a 256 -c hapup.sh.sha256
-  shasum -a 256 -c manifest.v0.json.sha256
-fi
-sh ./hapup.sh install-from-manifest \
-  --manifest ./manifest.v0.json \
-  --install-dir "$HOME/.local/bin" \
-  --review-token reviewed
-"$HOME/.local/bin/hap" version
-```
-
-Архив исходного кода всегда остается переносным резервным вариантом. Для
-сборки нужны Cangjie SDK и `cjpm` 1.1.x. На macOS сначала укажите активный SDK:
-
-```bash
-export SDKROOT="$(xcrun --show-sdk-path)"
-```
-
-Соберите и установите команду в каталог пользователя:
-
-```bash
-cjpm build
-mkdir -p "$HOME/.local/bin"
-cp ./target/release/bin/main "$HOME/.local/bin/hap"
-chmod +x "$HOME/.local/bin/hap"
 hap version
 ```
 
-Запустите первые проверки только для чтения в каталоге проекта:
+Для первой установки см. [руководство](docs/INSTALLATION.md).
+Если опубликованный бинарный файл ещё не поддерживает нужные команды,
+[соберите текущие исходники](docs/INSTALLATION.md#build-from-source).
+Полная установка Cangjie требует HapCLI 0.2.0 или новее; установка SDK/JDK —
+**0.3.0 или новее**.
+
+### Установка инструментов
+
+```bash
+hap get cangjie --version sts
+# Точная версия: hap get cangjie --version 1.1.3
+hap get jdk --provider semeru --version 17
+hap get android --version 36 --accept-licenses
+hap get ohos --version 6.0 --profile native
+```
+
+Для Cangjie `sts` автоматически выбирает SDK **1.1.3** и stdx **1.1.3.1**,
+опубликованные под разными тегами. Установщики загружают и проверяют пакеты,
+проверяют инструменты и только затем активируют приватную среду.
+Новые терминалы загружают её автоматически; в текущем выполните команду из
+`activationHint`. `--plan` не обращается к сети и не записывает файлы;
+`--no-activate` устанавливает файлы без переключения активной среды.
+
+Установка SDK/JDK выполняется на **нативном хосте macOS/Linux**; для Windows и
+других целевых хостов доступен только план. Каталоги различаются: встроенный
+каталог HarmonyOS сейчас предназначен для **Linux x64**:
+
+```bash
+hap get harmonyos --version 5.1.0.840 --accept-licenses
+```
+
+Для других хостов или версий HarmonyOS нужен официальный архив либо HTTPS URL
+и SHA-256. Перед `--accept-licenses` прочитайте условия поставщика.
+Android NDK/CMake, поддерживаемые платформы, отдельная Java для SDK и совместная
+настройка сред описаны в [руководстве SDK/JDK](docs/SDK_TOOLCHAINS.md).
+
+### Проверка проекта
 
 ```bash
 hap project detect --project .
 hap toolchain providers
 hap help
 ```
-
-Файл [`release/manifest.v0.json`](release/manifest.v0.json) в репозитории
-описывает preview исходного кода. Каждый GitHub Release получает новый
-манифест только из нативных заданий, прошедших сборку, тесты, checksum и
-проверку `hap version`.
 
 ## Основные возможности
 
@@ -109,7 +93,8 @@ hap help
 - Хранение подтвержденных псевдонимов устройств HarmonyOS и последних беспроводных адресов, доказанных через USB, без сканирования локальной сети.
 - Запуск настольных приложений Compose Multiplatform и сборка, установка и запуск iOS-приложений при наличии действующих средств подписи Apple на хосте.
 - Диагностика GitHub Actions и создание проверяемых CI-сценариев без изменения workflow-файлов самим CLI.
-- Установка официальных пакетов Cangjie SDK и stdx в приватный каталог Hap с точной версией, фиксированным LTS и обязательной проверкой SHA-256.
+- `hap get cangjie` устанавливает полную пару SDK/stdx, проверяет компиляцию и запуск, затем настраивает shell с резервной копией; компонентный `hap install cangjie*` не меняет настройки shell.
+- Установка Semeru JDK, Android SDK с дополнительными NDK/CMake, OpenHarmony SDK и HarmonyOS Command Line Tools с проверкой пакетов и инструментов и раздельным управлением средами. Доступность зависит от поставщика и хоста.
 - Краткий вывод по умолчанию; `-v` или `--verbose` включает структурированные подробности, а `--write-receipt` создает явный отчет для агента или CI.
 
 ## Типовые сценарии
@@ -131,7 +116,7 @@ hap get cangjie-sdk --target linux-amd64 --version <nightly-tag> --region auto -
 hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto --install-root "$HOME/.hap/stdx"
 ```
 
-`cangjie` — псевдоним `cangjie-sdk`; `cangjie-stdx` остается отдельным пакетом.
+В компонентном интерфейсе `hap install` `cangjie` — псевдоним `cangjie-sdk`; `cangjie-stdx` остается отдельным пакетом.
 Версия по умолчанию, `@latest` и `@lts` фиксируются на LTS `1.0.5`, а
 `@1.1.3` остается точной STS-линией. `@nightly` динамически выбирает новейший
 проверенный prerelease; точный ограниченный nightly-тег, например
@@ -219,6 +204,11 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 
 | Область | Состояние | Честное ограничение |
 | --- | --- | --- |
+| Установка SDK/JDK | Выполнение на нативном macOS/Linux; Windows и другие хосты — только план | Доступность пакетов ниже не равна доступности бинарных файлов HapCLI. |
+| IBM Semeru JDK | Установка из GitHub Releases; компиляция/запуск Java проверены на macOS ARM64 | Нужен подходящий архив Open Edition JDK; совместимость со всеми проектами Gradle не гарантируется. |
+| Android SDK/NDK/CMake | Каталог macOS Intel/ARM и Linux x64; контролируемые интеграционные проверки пройдены | Проверка реальной загрузки у поставщика ещё не завершена; нужны принятие условий и совместимая Java. |
+| OpenHarmony SDK | Каталог 6.0 для macOS Intel/ARM и Linux x64; native/full проверены на macOS ARM64 | SDK 6.0.0.47 / API 20; компиляция целевого объектного файла не доказывает запуск на устройстве. |
+| HarmonyOS Command Line Tools | Встроенный каталог Linux x64 5.1.0.840; официальный архив или URL | Проверка текущего пакета macOS ещё не завершена; для других хостов/версий нужны официальные файлы и SHA-256. |
 | Cangjie/cjpm на macOS arm64 | Проверены исходный код, тесты и выпуск по тегу | Статические объекты среды выполнения Cangjie 1.1.3 требуют macOS 13.3, даже если минимальная версия линковки указана ниже. |
 | Cangjie/cjpm на Linux AMD64/ARM64 | Доступен выпуск по тегу | Каждый релиз требует сборки, тестов и проверки бинарного файла на нативном runner. |
 | Windows AMD64 и macOS Intel | Проверены нативные nightly-сборки | Стабильный `v0.1.0` не меняется; nightly-бинарные файлы проходят сборку, тесты, упаковку и `hap version` на подходящих hosted runner. |
@@ -298,6 +288,8 @@ sh tests/nightly-workflow.sh
 
 ## Документация
 
+- [Установка HapCLI и Cangjie](docs/INSTALLATION.md)
+- [Установка SDK и JDK](docs/SDK_TOOLCHAINS.md)
 - [Справочник команд](docs/COMMAND_REFERENCE.md)
 - [Архитектура](docs/ARCHITECTURE.md)
 - [Самообучение stdx и doctorfix](docs/STDX_SELF_LEARNING_AND_DOCTORFIX.md)
@@ -308,7 +300,7 @@ sh tests/nightly-workflow.sh
 
 ## Границы проекта
 
-HapCLI не является официальным инструментом Cangjie или HarmonyOS, не заменяет менеджер пакетов, не предоставляет реестр пакетов, не управляет версиями SDK и не переписывает манифесты незаметно. Доступность сторонних зеркал и инструментов устройств зависит от внешней среды.
+HapCLI не является официальным инструментом Cangjie или HarmonyOS, не заменяет менеджер пакетов, не предоставляет реестр пакетов, не является универсальным менеджером SDK и не переписывает манифесты незаметно. Доступность сторонних зеркал и инструментов устройств зависит от внешней среды.
 
 Полный CLI и исходный код открыты по лицензии Apache License 2.0. Коммерческая поддержка может включать интеграцию, миграцию, обучение, помощь с развертыванием и обязательства по уровню сервиса, но не открывает скрытую закрытую редакцию CLI.
 
@@ -319,5 +311,3 @@ HapCLI не является официальным инструментом Can
 ## Лицензия
 
 HapCLI распространяется по [Apache License 2.0](LICENSE). Сведения об авторстве проекта находятся в [NOTICE](NOTICE).
-
-Установка SDK и JDK: `hap get jdk --provider semeru --version 17`, `hap get android --version 36 --accept-licenses`, `hap get ohos --version 6.0 --profile native`. Пакеты HarmonyOS, поддерживаемые платформы и проверки описаны в [руководстве](docs/SDK_TOOLCHAINS.md).

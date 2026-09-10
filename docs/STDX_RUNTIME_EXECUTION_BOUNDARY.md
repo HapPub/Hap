@@ -4,10 +4,11 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 
 ## Roles
 
-- `hap`: inspect, plan, diagnose, emit reviewed recipes and receipts, and run
-  the explicit checksum-gated `install cangjie|cangjie-sdk|cangjie-stdx`
-  package surface inside Hap private storage.
-- `hapup`: bootstrap or install reviewed assets after checksum and review gates.
+- `hap`: inspect, plan, diagnose and emit recipes/receipts; install components
+  through `install cangjie|cangjie-sdk|cangjie-stdx`, or complete toolchains through
+  `get cangjie` and the SDK/JDK installers, with checksum and verification gates.
+- `hapup`: install published HapCLI releases with checksum verification and PATH
+  setup; retain explicit low-level asset/manifest and restore interfaces.
 - hosted CI / sandbox shell: execute reviewed scripts and upload receipts after workflow review.
 - `cjpm`: remains the build tool; HapCLI does not replace it.
 
@@ -21,15 +22,18 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
   truth. `--plan` performs no catalog lookup, download, extraction, or write.
 - Fetch/deploy receipts must record source URL, target, version, checksum status, install root, and mutation truth.
 - `cjpm.toml` mutation is separate from stdx/runtime fetch/deploy.
-- Global SDK paths are not mutated by default.
+- System SDK files and project requirements remain unchanged. Explicit complete
+  toolchain installation may update the managed user shell selection after checks;
+  component-only installation does not change that selection.
 
 ## Non-Promises
 
-- no SDK version manager
-- no official package-manager status
-- no silent online lookup
-- no install through `get`, `doctor`, or `fetch reviewed-recipe`; package bytes
-  are installed only through an explicit `hap install cangjie*` request
+- no universal SDK manager or official package-manager status
+- no network lookup or mutation in `--plan`
+- no installation through the older `get cangjie-sdk/stdx` planners, `doctor`, or
+  `fetch reviewed-recipe`; an explicit `hap install cangjie*` request installs
+  components, while `hap get cangjie` and the SDK/JDK commands install and may activate
+  complete toolchains
 - no release certification from a fetch/deploy receipt alone
 
 ## Complete user installation
@@ -40,3 +44,8 @@ managed shell selection. This higher-level command owns activation; the separate
 `get cangjie-sdk/stdx` planners and lower-level package installs retain their
 existing behavior. `--plan` takes no network or filesystem action and
 `--no-activate` leaves shell defaults unchanged. See [installation](INSTALLATION.md).
+
+Starting with 0.3.0, `hap get jdk|semeru|android|ohos|openharmony|harmonyos` adds
+provider-specific SDK/JDK installation with independent environment selections.
+These commands execute only on native macOS/Linux; Windows/foreign targets are
+plan-only. See [SDK/JDK installation](SDK_TOOLCHAINS.md) for availability and checks.
