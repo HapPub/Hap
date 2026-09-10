@@ -40,10 +40,13 @@ run_logged_phase() {
   phase=$1
   shift
   log="$temp_root/hap-release-$phase.log"
-  set +e
-  "$@" 2>&1 | tee "$log"
-  status=${PIPESTATUS[0]}
-  set -e
+  if "$@" 2>&1 | tee "$log"; then
+    status=0
+  else
+    status=${PIPESTATUS[0]}
+    # Preserve a logging failure when the command itself succeeded.
+    [[ $status -ne 0 ]] || status=1
+  fi
   if [[ $status -ne 0 ]]; then
     if [[ $phase == test ]]; then
       detail=$(grep -E '\[[[:space:]]*(FAILED|ERROR)[[:space:]]*\][[:space:]]+CASE:' "$log" \
