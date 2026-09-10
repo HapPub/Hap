@@ -20,7 +20,9 @@ runtime check prevents publication. Published assets are never silently overwrit
 Older toolchains may require runtime libraries. macOS archives carry required
 vendor libraries in content-addressed `bin/.hap-runtime` directories, with a
 relative loader path; Windows ZIPs carry SDK runtime DLLs beside `hap.exe`.
-The vendor license travels with those files. Keep the complete `bin` directory
+Windows uses dynamic standard-library linkage because the Cangjie 1.1.3 static
+unittest runtime crashes even for a minimal test. Both Windows releases use
+the same DLL packaging and full test gates. The vendor license travels with those files. Keep the complete `bin` directory
 when manually moving an installation. Hapup preserves macOS runtime bundles
 alongside the binary, including prior bundles needed by `hap.prev`.
 

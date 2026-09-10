@@ -117,7 +117,7 @@ hap help
 - Diagnose GitHub Actions, generate reviewed CI recipes, and keep workflow
   mutation outside the CLI.
 - Keep normal output concise; use `-v` or `--verbose` for structured execution
-  details and `--write-receipt` for an explicit agent/CI handoff.
+  details and `--write-receipt` for an explicit automation/CI handoff.
 
 ## Common Workflows
 
@@ -154,7 +154,7 @@ HTTPS latency of the reviewed mirror, Mainland accelerators, and official
 source, then offers automatic-fastest or one forced route before final
 confirmation. A failed probe is displayed as unreachable, not as a fabricated
 latency. Scripts, redirected input, explicit package versions, and `--plan`
-remain non-interactive. Agents and CI can use
+remain non-interactive. Scripts and CI can use
 `--route auto|mirror|ghfast|ghproxy|official`; an exact forced route never
 silently falls back. Probe timing is transport evidence only and never replaces
 the pinned SHA-256 authority.

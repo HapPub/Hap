@@ -100,10 +100,6 @@ jobs:
             '${{ matrix.host.sdk_platform }}' \
             "$RUNNER_TEMP/cangjie-sdk" "$RUNNER_TEMP/cangjie-env.sh" \
             "$RUNNER_TEMP/cangjie-sdk-resolution.json"
-      - name: Probe Windows compiler test runtime
-        if: matrix.host.target == 'windows-amd64'
-        shell: bash
-        run: bash scripts/ci/probe-windows-tests.sh "$RUNNER_TEMP/cangjie-env.sh"
       - name: Build, test, and package native binary
         env:
           HAP_EXPECTED_SDK_VERSION: ${{ matrix.sdk_version }}

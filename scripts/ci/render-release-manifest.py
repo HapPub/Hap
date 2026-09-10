@@ -179,6 +179,7 @@ def main() -> None:
             "",
             "## Updates / 更新内容",
             "- Fix Windows package-transaction temporary paths, checksum execution and standard SDK-layout lookup.",
+            "- Use dynamic Windows standard-library linkage with bundled runtime DLLs for Cangjie 1.1.3 compatibility.",
             "- Fix macOS Intel testing for unavailable stable SDK pairs and retain failure diagnostics.",
             "- Provide complete Cangjie installation, IBM Semeru JDK and Android/OpenHarmony/HarmonyOS SDK installers.",
             "- Synchronize three-language READMEs and source-version checks.",
