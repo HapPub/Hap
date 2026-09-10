@@ -487,10 +487,15 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "get") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie|cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
             return 2
         }
         let subject = commandLine[2]
+        if (subject == "cangjie") {
+            let output = runCangjieToolchainGet(commandLine)
+            println(output)
+            return cangjieToolchainGetExitCode(output)
+        }
         if (subject == "cangjie-stdx") {
             println(renderCangjieStdxGetPlanJson(resolveCangjieStdxGetOptions(commandLine, 3)))
             return 0
@@ -754,6 +759,8 @@ public func renderHapCliHelp(): String {
     "  ci executor-snippet                               Emit a reviewed CI snippet for executor adoption review\n" +
     "  ci hosted-proof-pack                              Write a non-mutating hosted CI proof workflow pack\n" +
     "  release manifest                                  Emit release asset/checksum truth without publishing assets\n" +
+    "  get cangjie [--version sts|1.1.3|lts|nightly]    Download, verify, install SDK + matching stdx, and activate\n" +
+    "       [--plan] [--no-activate]                    Read-only preview, or install without changing shell defaults\n" +
     "  install cangjie[@version]                        Exact no-option command opens TUI; explicit forms install the SDK\n" +
     "  install cangjie-sdk[@version]                    Explicit SDK package name; same payload as cangjie\n" +
     "  install cangjie-stdx[@version]                   Install the matching official stdx binary package separately\n" +

@@ -2,7 +2,7 @@ package hapcli
 
 import std.env.getCommandLine
 
-public let HapCliVersion: String = "0.1.0"
+public let HapCliVersion: String = "0.2.0"
 
 public func version(): String {
     HapCliVersion

@@ -18,12 +18,15 @@ by the executable.
 | `cjpm graph ...` | Discover manifests, diagnose dependency graphs, normalize reviewed copies, and emit CI preflight text. |
 | `ci ...` | Diagnose workflows and generate reviewed bootstrap, bridge, executor, and hosted-proof artifacts. |
 | `toolchain providers`, `toolchain doctor` | Inspect compatible provider families without switching SDK versions. |
+| `get cangjie --version <version>` | Install SDK + matching stdx and activate a verified native toolchain; `--plan` previews, `--no-activate` installs only. |
 | `get cangjie-stdx`, `get cangjie-sdk` | Emit reviewed acquisition/install plans. |
 | `fetch reviewed-recipe` | Write a checksum-gated fetch/deploy recipe without executing it inside HapCLI. |
 | `install cangjie|cangjie-sdk|cangjie-stdx[@version]` | Install checksum-gated official SDK/stdx packages into Hap private storage; `--plan` is read-only. |
 | `install doctor|replace-plan|restore-plan|receipt-readback` | Review replacement/restore inputs and read Hapup receipts. |
 | `dictionary refresh` | Refresh a local dictionary cache from an explicit source. |
 | `release manifest` | Emit current preview release metadata without publishing assets. |
+
+See [installation](INSTALLATION.md) for `hapup install` and complete toolchain setup.
 
 ## Cangjie Download Routes
 
@@ -39,7 +42,7 @@ hap install cangjie-sdk@1.1.3 --target macos-arm64 --route mirror
 hap install cangjie-sdk@1.1.3 --target linux-amd64 --plan
 ```
 
-`cangjie` resolves to `cangjie-sdk`. Omitted/latest/lts is pinned to `1.0.5`
+In the lower-level `hap install` command, `cangjie` resolves to `cangjie-sdk`. Omitted/latest/lts is pinned to `1.0.5`
 LTS; `1.1.3` is an exact STS request. `nightly` dynamically resolves the newest
 validated prerelease, and an exact bounded nightly tag remains reproducible.
 SDK and stdx use separate assets and

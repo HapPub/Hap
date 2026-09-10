@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="Локальная работа прежде всего" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="Слой совместимости инструментов" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -23,6 +23,22 @@ HapCLI — это открытый слой совместимости кома�
 HapCLI не заменяет `cjpm`, Gradle, Xcode, DevEco Studio, `hdc` или менеджер пакетов. Он определяет фактическое состояние проекта и среды, создает проверяемый план, запускает ограниченный набор фиксированных адаптеров и сохраняет структурированный результат.
 
 ## Быстрый старт
+
+Версия 0.2.0 добавляет простой путь установки. С новым Hapup:
+
+```bash
+hapup install
+hap get cangjie --version sts
+# Точная версия: hap get cangjie --version 1.1.3
+```
+
+HapCLI загружает и проверяет SDK 1.1.3 и stdx 1.1.3.1, компилирует и запускает
+тестовую программу, затем настраивает среду новых терминалов. В текущем терминале
+выполните команду из `activationHint`. `--plan` не обращается к сети и не меняет
+файлы; `--no-activate` только устанавливает файлы. См. [установку](docs/INSTALLATION.md).
+Для этих команд нужна версия 0.2.0; старый релиз 0.1.0 их не поддерживает.
+Пример ниже также работает со старыми релизами; доступность версий определяется
+страницей релизов.
 
 На странице релиза доступны проверенные бинарные файлы для Linux AMD64,
 Linux ARM64 и macOS ARM64. Сначала загрузите Hapup и манифест, созданный из

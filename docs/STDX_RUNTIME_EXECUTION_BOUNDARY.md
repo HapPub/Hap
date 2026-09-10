@@ -31,3 +31,12 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 - no install through `get`, `doctor`, or `fetch reviewed-recipe`; package bytes
   are installed only through an explicit `hap install cangjie*` request
 - no release certification from a fetch/deploy receipt alone
+
+## Complete user installation
+
+Starting with 0.2.0, an explicit `hap get cangjie --version <version>` request
+installs both SDK and stdx, verifies a native compile/run, and changes the user's
+managed shell selection. This higher-level command owns activation; the separate
+`get cangjie-sdk/stdx` planners and lower-level package installs retain their
+existing behavior. `--plan` takes no network or filesystem action and
+`--no-activate` leaves shell defaults unchanged. See [installation](INSTALLATION.md).

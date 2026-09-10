@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="本地优先" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="工具链兼容层" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -23,6 +23,25 @@ HapCLI 是一套开源命令行兼容层，主要解决项目在开发机、CI�
 HapCLI 不替代 `cjpm`、Gradle、Xcode、DevEco Studio、`hdc` 或包管理器。它负责识别项目与环境事实，输出可审查的方案，调用有限且固定的工具适配器，并记录结构化结果。
 
 ## 快速开始
+
+0.2.0 新增面向使用者的安装入口。已有新版 `hapup` 时，一条命令安装 HapCLI 本体：
+
+```bash
+hapup install
+```
+
+安装新版 HapCLI 后，以下命令会真实下载、校验并安装 SDK 与配套 stdx，验证编译运行后配置默认环境：
+
+```bash
+hap get cangjie --version sts
+# 精确指定版本：hap get cangjie --version 1.1.3
+```
+
+`sts` 对应 SDK 1.1.3 + stdx 1.1.3.1；无需手动找 tag、checksum 或编写 recipe。
+新终端自动加载，当前终端执行输出中的 `activationHint` 即可生效。
+`--plan` 只预览，`--no-activate` 只安装。详细行为和失败恢复见
+[安装说明](docs/INSTALLATION.md)。这些入口需要 0.2.0；旧版 0.1.0 不具备此能力。
+以下校验引导方式也适用于旧版发布包，实际可下载版本以发布页为准。
 
 发布页提供 Linux AMD64、Linux ARM64 与 macOS ARM64 的验证二进制。先下载 Hapup
 和由真实产物生成的 manifest，校验两者后，再安装当前主机对应的二进制：

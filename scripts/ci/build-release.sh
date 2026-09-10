@@ -108,6 +108,9 @@ fi
   printf 'release binary is missing: %s\n' "$binary" >&2
   exit 1
 }
+if [[ "$target" != windows-amd64 ]]; then
+  run_logged_phase toolchain-get python3 tests/cangjie-toolchain-get.py "$binary"
+fi
 phase=sdk-environment-binary-smoke
 [[ "$("$binary" version)" == "$version" ]] || {
   printf 'release binary version smoke failed\n' >&2

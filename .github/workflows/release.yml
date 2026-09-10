@@ -28,6 +28,7 @@ jobs:
           printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
           sh tests/public-surface.sh
           sh tests/hapup-security.sh
+          python3 tests/hapup-install.py
           sh tests/release-workflow.sh
           sh tests/nightly-workflow.sh
 

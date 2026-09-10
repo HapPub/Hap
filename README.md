@@ -1,6 +1,6 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Cangjie-HapCLI-c96b2c?style=for-the-badge&labelColor=1f2430" alt="Cangjie HapCLI" />
-  <img src="https://img.shields.io/badge/version-0.1.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.1.0" />
+  <img src="https://img.shields.io/badge/version-0.2.0-3182ce?style=for-the-badge&labelColor=1f2430" alt="Version 0.2.0" />
   <img src="https://img.shields.io/badge/mode-local--first-2f855a?style=for-the-badge&labelColor=1f2430" alt="Local first" />
   <img src="https://img.shields.io/badge/focus-toolchain%20glue-805ad5?style=for-the-badge&labelColor=1f2430" alt="Toolchain glue" />
   <img src="https://img.shields.io/badge/license-Apache--2.0-d69e2e?style=for-the-badge&labelColor=1f2430" alt="Apache License 2.0" />
@@ -28,6 +28,23 @@ manager. It detects project and environment facts, produces reviewable plans,
 executes a bounded set of fixed tool adapters, and records structured results.
 
 ## Quick Start
+
+Version 0.2.0 adds a user-facing installer. With the new bootstrap companion:
+
+```bash
+hapup install
+hap get cangjie --version sts
+# Or select an exact SDK: hap get cangjie --version 1.1.3
+```
+
+The second command downloads and verifies SDK 1.1.3 and matching stdx 1.1.3.1,
+compiles and runs a smoke program, then configures the default shell environment.
+New terminals load it automatically; use the returned `activationHint` in the
+current terminal. `--plan` previews without writes or network requests;
+`--no-activate` installs files only. See [installation](docs/INSTALLATION.md).
+These commands require 0.2.0; the old 0.1.0 release does not implement them.
+The checksum bootstrap below also works with older releases; the release page
+is the authority for which versions are actually downloadable.
 
 Verified release binaries are available for Linux AMD64, Linux ARM64, and
 macOS ARM64. Download Hapup and the generated manifest, verify both files, then

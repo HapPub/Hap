@@ -424,9 +424,9 @@ public class HapCjpmProfileParserTest {
         @Assert(containsForTest(json, "\"status\": \"release-manifest-preview-ready\""), true)
         @Assert(containsForTest(json, "\"manifestUrl\": \"https://cli.hap.pub/release/manifest.v0.json\""), true)
         @Assert(containsForTest(json, "\"url\": \"https://cli.hap.pub/install/hapup.sh\""), true)
-        @Assert(containsForTest(json, "\"sha256\": \"b0fbdc2faba124573e5c4c6b930bb4a7205d2122f7c163611a4cc2ae30ef1fcd\""), true)
+        @Assert(containsForTest(json, "\"sha256\": \"95b8c48463216c48662bf0bc16efffe59a6db2a36886d57b8280bd4fbb1699ef\""), true)
         @Assert(containsForTest(json, "\"downloadableAssetCount\": 1"), true)
-        @Assert(containsForTest(json, "hap ci bootstrap-packet --cli-bin hap --hapup-url https://cli.hap.pub/install/hapup.sh --hapup-sha256 b0fbdc2faba124573e5c4c6b930bb4a7205d2122f7c163611a4cc2ae30ef1fcd"), true)
+        @Assert(containsForTest(json, "hap ci bootstrap-packet --cli-bin hap --hapup-url https://cli.hap.pub/install/hapup.sh --hapup-sha256 95b8c48463216c48662bf0bc16efffe59a6db2a36886d57b8280bd4fbb1699ef"), true)
         @Assert(containsForTest(json, "\"networkActionTaken\": false"), true)
         @Assert(containsForTest(json, "\"installActionTaken\": false"), true)
         @Assert(containsForTest(json, "\"publicationActionTaken\": false"), true)
@@ -606,7 +606,7 @@ public class HapCjpmProfileParserTest {
             "--target",
             "x86_64-unknown-linux-gnu",
             "--hapup-sha256",
-            "b0fbdc2faba124573e5c4c6b930bb4a7205d2122f7c163611a4cc2ae30ef1fcd",
+            "95b8c48463216c48662bf0bc16efffe59a6db2a36886d57b8280bd4fbb1699ef",
             "--run-tests"
         ], 3)
         let json = renderCiHostedProofPackJson(options)

@@ -254,7 +254,7 @@ func parseCangjiePackageSpec(options: HapCangjiePackageInstallOptions): Unit {
     } else if (requested == "1.0.5" || (options.resolvedPackage == "cangjie-stdx" && requested == "1.0.5.1")) {
         options.resolvedVersion = "1.0.5"
         options.releaseChannel = "LTS"
-    } else if (requested == "1.1.3" || (options.resolvedPackage == "cangjie-stdx" && requested == "1.1.3.1")) {
+    } else if (requested == "sts" || requested == "1.1.3" || (options.resolvedPackage == "cangjie-stdx" && requested == "1.1.3.1")) {
         options.resolvedVersion = "1.1.3"
         options.releaseChannel = "STS"
     } else if (requested == "nightly") {
@@ -269,7 +269,7 @@ func parseCangjiePackageSpec(options: HapCangjiePackageInstallOptions): Unit {
         options.catalogSource = "exact-nightly-tag"
         options.catalogStatus = "pending-execution"
     } else {
-        rejectCangjiePackageOptions(options, "unsupported-cangjie-version", "supported release lines: latest/lts (1.0.5 LTS), 1.0.5, 1.1.3 STS, nightly, or an exact nightly tag")
+        rejectCangjiePackageOptions(options, "unsupported-cangjie-version", "supported release lines: latest/lts (1.0.5 LTS), 1.0.5, sts/1.1.3 STS, nightly, or an exact nightly tag")
         return
     }
     if (options.resolvedVersion.size > 0) {
