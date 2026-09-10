@@ -282,6 +282,7 @@ func validateSdkTarLinks(archive: String): Unit {
         let target = substringFrom(line, at + separator.size)
         if (target.size == 0 || startsWithText(target, "/") || containsText(target, " ")) { throw Exception("unsafe archive link target") }
         let name = resolveSdkArchivePath(member, empty, empty, 0)
+        if (names.contains(name)) { throw Exception("duplicate archive link name") }
         names.add(name)
         targets.add(if (symbolic && containsText(name, "/")) { parentPath(name) + "/" + target } else { target })
     }

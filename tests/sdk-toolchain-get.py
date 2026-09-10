@@ -107,7 +107,7 @@ if [ "$1" = -version ]; then echo 'openjdk version "17.0.20"' >&2; else printf h
     escaped = home / '.hap/escape'; escaped.symlink_to('/usr/local')
     local_jdk('--install-root', str(escaped / 'hap-test'), ok=False)
     # Tar traversal, special files, link chains, and zip symlinks never escape.
-    for case in ['traversal', 'link-chain', 'fifo']:
+    for case in ['traversal', 'link-chain', 'duplicate-link', 'fifo']:
         bad = tmp / (case + '.tar.gz')
         with tarfile.open(bad, 'w:gz') as bundle:
             if case == 'traversal':
@@ -115,7 +115,8 @@ if [ "$1" = -version ]; then echo 'openjdk version "17.0.20"' >&2; else printf h
             elif case == 'fifo':
                 member = tarfile.TarInfo('fifo'); member.type = tarfile.FIFOTYPE; bundle.addfile(member)
             else:
-                for name, target in [('top/a', '..'), ('top/x', 'a/../../escape')]:
+                links = [('top/a', '..'), ('top/x', 'a/../../escape')] if case == 'link-chain' else [('top/a', 'safe'), ('top/a', '..'), ('top/x', 'a/../../escape')]
+                for name, target in links:
                     member = tarfile.TarInfo(name); member.type = tarfile.SYMTYPE; member.linkname = target; bundle.addfile(member)
         sha = hashlib.sha256(bad.read_bytes()).hexdigest()
         run('jdk', '--version', '17', '--archive', str(bad), '--sha256', sha, ok=False)
