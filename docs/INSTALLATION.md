@@ -35,6 +35,14 @@ they are not an independent signature of the publisher.
 location. Advanced `install-from-manifest` and `install-flagship` commands remain
 available, with their explicit checksum and review-token contracts.
 
+For the two compiler builds, see [toolchain-qualified releases](RELEASING.md#selecting-a-toolchain-qualified-release).
+A release may carry runtime libraries required by its build compiler. Hapup copies
+the content-addressed macOS runtime directory before validating the new binary and
+retains prior directories for backup/restore. If installing an archive manually,
+keep its entire `bin` directory; copying only `hap` or `hap.exe` may lose required
+libraries. Windows ZIP installation is manual; the POSIX bootstrap is not a
+PowerShell installer.
+
 ## First installation from an older release
 
 The following compatibility example selects the published **v0.1.0** assets.

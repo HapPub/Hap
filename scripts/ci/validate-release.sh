@@ -23,7 +23,7 @@ version=$(awk '
   printf 'could not read package version from cjpm.toml\n' >&2
   exit 1
 }
-[[ "$tag" == "v$version" ]] || {
+[[ "$tag" == "v$version" || "$tag" == "v$version-cangjie-1.0.5" || "$tag" == "v$version-cangjie-1.1.3" ]] || {
   printf 'tag %s does not match package version v%s\n' "$tag" "$version" >&2
   exit 1
 }

@@ -194,7 +194,7 @@ public class HapCangjiePackageInstallTest {
 
     @TestCase
     public func fixtureTransactionRejectsChecksumThenInstallsAndHitsMarkerCache(): Unit {
-        let fixture = "/tmp/hapcli-package-install-fixture"
+        let fixture = testTempPathForTest("hapcli-package-install-fixture")
         let payload = fixture + "/payload/cangjie"
         let archive = fixture + "/fixture-sdk.tar.gz"
         let installRoot = fixture + "/install"
@@ -202,7 +202,9 @@ public class HapCangjiePackageInstallTest {
         File.writeTo(payload + "/envsetup.sh", "export CANGJIE_HOME=fixture\n".toArray())
         let (tarCode, _, _) = executeWithOutput("tar", ["-czf", archive, "-C", fixture + "/payload", "cangjie"])
         @Assert(tarCode, Int64(0))
-        let (shaCode, shaOut, _) = executeWithOutput("shasum", ["-a", "256", archive])
+        let shaProgram = if (isProgramResolvable("sha256sum")) { "sha256sum" } else { "shasum" }
+        let shaArgs = if (shaProgram == "sha256sum") { [archive] } else { ["-a", "256", archive] }
+        let (shaCode, shaOut, _) = executeWithOutput(shaProgram, shaArgs)
         @Assert(shaCode, Int64(0))
         let exactSha = firstBootstrapAsciiToken(String.fromUtf8(shaOut))
 

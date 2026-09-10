@@ -4,6 +4,7 @@ Real archive SHA rejection is covered by the package installer transaction tests
 """
 import json
 import os
+import platform
 from pathlib import Path
 import subprocess
 import sys
@@ -20,6 +21,17 @@ with tempfile.TemporaryDirectory(prefix='hap-toolchain-get-') as td:
         assert (p.returncode == 0) == success, (p.returncode, data, p.stderr)
         assert data['ok'] == success, data
         return data
+    if platform.system() == 'Darwin' and platform.machine() == 'x86_64':
+        # Stable SDK/stdx pairs are not published for this native host. Exercise
+        # explicit foreign installation-only mode and fail-closed native plans.
+        for version in ('sts', 'lts', '1.1.3', '1.0.5'):
+            failed = run('--version', version, '--plan', success=False)
+            assert not root.exists(), failed
+        foreign = run('--version', 'sts', '--target', 'macos-arm64', '--no-activate', '--plan')
+        assert foreign['sdk']['assetVersion'] == '1.1.3', foreign
+        assert not root.exists(), 'foreign plan wrote files'
+        print('cangjie toolchain get unavailable-native-host contract passed')
+        sys.exit(0)
     plan = run('--version', 'sts', '--plan')
     assert not root.exists(), 'plan wrote files'
     assert plan['sdk']['assetVersion'] == '1.1.3'

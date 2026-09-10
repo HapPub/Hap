@@ -38,6 +38,8 @@ hap version
 可[从当前源码构建](docs/INSTALLATION.md#build-from-source)。
 完整仓颉安装需要 HapCLI 0.2.0 或更新版本；SDK/JDK 安装需要 **0.3.0 或更新版本**。
 
+可独立选择构建 HapCLI 所用的编译器，见[仓颉 1.0.5 / 1.1.3 发行说明](docs/RELEASING.md#selecting-a-toolchain-qualified-release)。手动解压安装时须保留随包运行库。
+
 ### 安装工具链
 
 ```bash
@@ -194,7 +196,8 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | HarmonyOS Command Line Tools | 内置 Linux x64 5.1.0.840 目录；支持官方归档/URL | 当前 macOS 真包验收尚未完成；其他主机或版本需要官方资产和 SHA-256。 |
 | macOS arm64 仓颉/cjpm | 源码、测试和标签发布链已验证 | 当前仓颉 1.1.3 静态运行时对象要求 macOS 13.3，即使链接目标设置得更低也不能证明更老系统可运行。 |
 | Linux AMD64/ARM64 仓颉/cjpm | 已有标签发布链 | 每个发布必须由对应原生 Runner 完成构建、测试和二进制自检。 |
-| Windows AMD64 与 macOS Intel | nightly 原生构建链已验证 | 稳定版 `v0.1.0` 不变；nightly 二进制必须在匹配的托管 Runner 通过构建、测试、打包和 `hap version`。 |
+| Windows AMD64 | 两条工具链发行均包含此构建目标 | 必须通过原生测试和 ZIP 解包启动验证；SDK 安装仍只提供计划。 |
+| macOS Intel | 保留 nightly 原生构建 | 1.0.5/1.1.3 稳定目录没有对应主机 SDK，需要匹配的 nightly SDK。 |
 | OHOS ARM64/AMD64 | nightly 交叉构建和链接验证可用 | 产物尚未在 OHOS 设备上执行运行时自检，并依赖兼容的目标端仓颉运行时。 |
 | Windows ARM64/x86 | 已记录上游缺口 | 当前镜像的仓颉发布没有匹配的原生宿主 SDK，因此 HapCLI 不会把其他架构改名后声称支持。 |
 | HarmonyOS 应用 | 已有真实构建、安装和启动流程 | 需要可用的 DevEco 工具链、已授权设备和有效签名配置。 |

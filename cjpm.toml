@@ -16,3 +16,9 @@
 
 [target.x86_64-linux-ohos]
   compile-option = "-B \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/x86_64-linux-ohos\" -L \"${OHOS_SDK_NATIVE}/sysroot/usr/lib/x86_64-linux-ohos\" --sysroot \"${OHOS_SDK_NATIVE}/sysroot\""
+
+[target.aarch64-apple-darwin]
+  compile-option = "--link-options -headerpad_max_install_names"
+
+[target.x86_64-apple-darwin]
+  compile-option = "--link-options -headerpad_max_install_names"

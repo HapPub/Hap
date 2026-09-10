@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
 if [[ $# -ne 4 ]]; then
   printf 'usage: %s <target> <version> <env-file> <dist-dir>\n' "$0" >&2
@@ -47,10 +47,10 @@ run_logged_phase() {
   if [[ $status -ne 0 ]]; then
     if [[ $phase == test ]]; then
       detail=$(grep -E '\[[[:space:]]*(FAILED|ERROR)[[:space:]]*\][[:space:]]+CASE:' "$log" \
-        | tr '\r\n' '  ' | cut -c1-6000)
+        | tr '\r\n' '  ' | cut -c1-6000 || true)
     else
       detail=$(grep -E '(^|[[:space:]])(error:|undefined symbol:|ld[^:]*: error:)' "$log" \
-        | tail -n 8 | tr '\r\n' '  ' | cut -c1-1600)
+        | tail -n 8 | tr '\r\n' '  ' | cut -c1-1600 || true)
     fi
     if [[ -z $detail ]]; then
       detail=$(tail -n 6 "$log" | tr '\r\n' '  ' | cut -c1-1600)
@@ -92,6 +92,12 @@ phase=validate-release
 actual_version=$(bash scripts/ci/validate-release.sh "v$version")
 [[ "$actual_version" == "$version" ]]
 
+phase=verify-build-toolchain
+if [[ -n ${HAP_EXPECTED_SDK_VERSION:-} ]]; then
+  compiler_version=$(cjc --version)
+  printf '%s\n' "$compiler_version" | grep -F "Cangjie Compiler: $HAP_EXPECTED_SDK_VERSION " >/dev/null
+fi
+
 run_logged_phase build cjpm build
 run_logged_phase test cjpm test --timeout-each=30s --no-progress --no-color
 
@@ -113,7 +119,9 @@ if [[ "$target" != windows-amd64 ]]; then
   run_logged_phase sdk-toolchain-get python3 tests/sdk-toolchain-get.py "$binary"
 fi
 phase=sdk-environment-binary-smoke
-[[ "$("$binary" version)" == "$version" ]] || {
+actual_binary_version=$("$binary" version)
+actual_binary_version=${actual_binary_version%$'\r'}
+[[ "$actual_binary_version" == "$version" ]] || {
   printf 'release binary version smoke failed\n' >&2
   exit 1
 }
@@ -126,6 +134,13 @@ mkdir -p "$stage/$package/bin" "$dist_dir"
 cp "$binary" "$stage/$package/bin/$binary_name"
 chmod 0755 "$stage/$package/bin/$binary_name"
 cp LICENSE NOTICE README.md "$stage/$package/"
+mkdir -p "$stage/$package/docs"
+cp docs/INSTALLATION.md docs/SDK_TOOLCHAINS.md "$stage/$package/docs/"
+phase=bundle-native-runtime
+python_bin=${PYTHON:-python3}
+"$python_bin" "$hap_release_script_dir/bundle-native-runtime.py" \
+  --target "$target" --sdk-root "$CANGJIE_HOME" \
+  --binary "$stage/$package/bin/$binary_name"
 
 archive="$dist_dir/$package.$archive_extension"
 python_bin=${PYTHON:-python3}

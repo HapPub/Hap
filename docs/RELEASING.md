@@ -1,18 +1,28 @@
 # Releasing HapCLI
 
-HapCLI releases are created only from a version-matched Git tag. The release
-workflow downloads the official Cangjie 1.1.3 SDK for each native host, verifies
-its pinned SHA-256, builds and tests HapCLI, runs `hap version`, and packages only
-the binaries that passed those gates.
+HapCLI releases are built from version-matched tags. Two toolchain-qualified
+releases use the same HapCLI source version and different pinned compilers:
 
-The required first-release targets are:
+- `v0.3.0-cangjie-1.0.5`: built with Cangjie 1.0.5 LTS.
+- `v0.3.0-cangjie-1.1.3`: built with Cangjie 1.1.3 STS.
 
-- `linux-amd64` on `ubuntu-24.04`
-- `linux-arm64` on `ubuntu-24.04-arm`
-- `darwin-arm64` on `macos-14`
+Each requires native Linux AMD64, Linux ARM64, macOS ARM64 and Windows AMD64
+builds, the full test suite, and an extracted-archive `hap version` check with
+no inherited SDK environment. Windows failures block publication. Stable 1.0.5
+and 1.1.3 do not provide macOS Intel host SDKs; the separate nightly matrix tests
+that host with a matching nightly SDK.
 
-Windows and macOS Intel are not claimed. The source archive is always emitted as
-the portable fallback.
+SDK archives are resolved from the exact mirror manifest and checked against its
+SHA-256. The release manifest records the compiler version, source revision and
+per-platform SDK provenance. A missing archive, mismatched SDK receipt or failed
+runtime check prevents publication. Published assets are never silently overwritten.
+
+Older toolchains may require runtime libraries. macOS archives carry required
+vendor libraries in content-addressed `bin/.hap-runtime` directories, with a
+relative loader path; Windows ZIPs carry SDK runtime DLLs beside `hap.exe`.
+The vendor license travels with those files. Keep the complete `bin` directory
+when manually moving an installation. Hapup preserves macOS runtime bundles
+alongside the binary, including prior bundles needed by `hap.prev`.
 
 ## Release Procedure
 
@@ -24,15 +34,35 @@ the portable fallback.
    distinct from the current source version.
 2. Run the public, installer-security, and release-workflow tests.
 3. Merge the reviewed commit to `main`.
-4. Create and push `v<version>` at that exact commit.
+4. Create and push `v<version>-cangjie-1.0.5` and `v<version>-cangjie-1.1.3`
+   at the exact verified commit. A plain `v<version>` remains an STS build.
 5. Confirm that all native jobs pass and that the GitHub release contains
-   `manifest.v0.json`, `SHA256SUMS`, Hapup, source, and all three native archives.
+   `manifest.v0.json`, `SHA256SUMS`, Hapup, source, and all four native archives.
 6. Download one release archive through its manifest and rerun `hap version` on
    the target host with an empty inherited environment. Preserve the matching
    `*.runtime-portability.json` receipt before announcing broad availability.
 
 The generated release manifest is built from files downloaded from successful
 workflow jobs. It never turns a planned target into a downloadable asset.
+
+## Selecting a toolchain-qualified release
+
+Once the release is published, use a verified bootstrap companion:
+
+```sh
+hapup install --version 0.3.0-cangjie-1.1.3
+# Or select the LTS compiler build:
+hapup install --version 0.3.0-cangjie-1.0.5
+```
+
+Both binaries report `hap version` as `0.3.0`; the release tag and manifest identify
+the build compiler. This does not change what `hap get cangjie --version ...`
+installs. STS is the default latest release; the LTS build is an explicit choice.
+Windows users extract the matching ZIP and retain `hap.exe` and its adjacent DLLs;
+the POSIX Hapup companion is not a native PowerShell installer.
+
+A branch push to the dedicated release-fix branch or a manual workflow run checks
+both compilers without publishing. Only tag runs enter the publication job.
 
 ## Nightly Platform Evidence
 

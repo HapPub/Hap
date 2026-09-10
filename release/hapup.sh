@@ -589,6 +589,28 @@ install_flagship() {
   TMP_BIN="$INSTALL_DIR/.hap.tmp.$$"
   BACKUP_BIN="$INSTALL_DIR/hap.prev"
   BACKUP_CREATED=false
+  # Runtime bundles use content-addressed directories beside the binary. Keep
+  # prior directories so the existing backup remains runnable after an update.
+  SOURCE_RUNTIME="$(dirname -- "$SOURCE_BIN")/.hap-runtime"
+  if [ -d "$SOURCE_RUNTIME" ]; then
+    [ ! -L "$INSTALL_DIR/.hap-runtime" ] || fail "runtime destination must not be a symlink"
+    mkdir -p "$INSTALL_DIR/.hap-runtime"
+    for RUNTIME_DIR in "$SOURCE_RUNTIME"/*; do
+      [ -d "$RUNTIME_DIR" ] || fail "runtime bundle must contain directories"
+      RUNTIME_ID=$(basename -- "$RUNTIME_DIR")
+      printf '%s\n' "$RUNTIME_ID" | LC_ALL=C grep -Eq '^[0-9a-f]{24}$' || fail "invalid runtime bundle identity"
+      RUNTIME_DEST="$INSTALL_DIR/.hap-runtime/$RUNTIME_ID"
+      [ ! -L "$RUNTIME_DEST" ] || fail "runtime bundle destination must not be a symlink"
+      if [ -e "$RUNTIME_DEST" ]; then
+        diff -r "$RUNTIME_DIR" "$RUNTIME_DEST" >/dev/null || fail "existing runtime bundle differs"
+      else
+        RUNTIME_TMP="$INSTALL_DIR/.hap-runtime/.tmp-$$-$RUNTIME_ID"
+        [ ! -e "$RUNTIME_TMP" ] && [ ! -L "$RUNTIME_TMP" ] || fail "runtime staging already exists"
+        /bin/cp -R "$RUNTIME_DIR" "$RUNTIME_TMP"
+        /bin/mv "$RUNTIME_TMP" "$RUNTIME_DEST"
+      fi
+    done
+  fi
   /bin/cp "$SOURCE_BIN" "$TMP_BIN"
   chmod +x "$TMP_BIN"
   "$TMP_BIN" version >/dev/null 2>&1 || fail "asset did not pass hap version smoke"

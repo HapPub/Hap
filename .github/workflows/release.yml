@@ -4,6 +4,9 @@ on:
   push:
     tags:
       - "v*"
+    branches:
+      - fix/windows-build-dual-releases
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -17,20 +20,32 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       version: ${{ steps.release.outputs.version }}
+      sdk_versions: ${{ steps.release.outputs.sdk_versions }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - id: release
-        name: Validate tag and public surface
+        name: Validate source version, tag and public surface
         shell: bash
         run: |
           set -euo pipefail
-          version="$(bash scripts/ci/validate-release.sh "$GITHUB_REF_NAME")"
-          printf 'version=%s\n' "$version" >> "$GITHUB_OUTPUT"
+          version=$(awk -F'"' '/HapCliVersion: String/ {print $2; exit}' src/hapcli.cj)
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            version="$(bash scripts/ci/validate-release.sh "$GITHUB_REF_NAME")"
+            case "$GITHUB_REF_NAME" in
+              *-cangjie-1.0.5) sdk_versions='["1.0.5"]' ;;
+              *) sdk_versions='["1.1.3"]' ;;
+            esac
+          else
+            bash scripts/ci/validate-release.sh "v$version"
+            sdk_versions='["1.0.5","1.1.3"]'
+          fi
+          printf 'version=%s\nsdk_versions=%s\n' "$version" "$sdk_versions" >> "$GITHUB_OUTPUT"
           sh tests/public-surface.sh
           sh tests/hapup-security.sh
           python3 tests/hapup-install.py
           sh tests/release-workflow.sh
           sh tests/nightly-workflow.sh
+          python3 tests/toolchain-release.py
 
   source:
     needs: validate
@@ -50,25 +65,26 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
+        sdk_version: ${{ fromJSON(needs.validate.outputs.sdk_versions) }}
+        host:
           - runner: ubuntu-24.04
             target: linux-amd64
-            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-x64-1.1.3.tar.gz&objectKey=6a19349d21f5a8178d6fd22b
-            sdk_sha256: 2b68905afc466e665ae181595c63f96c18d75fd2c1fb6c6f0cb64e179c28d61a
+            sdk_platform: linux-x64
           - runner: ubuntu-24.04-arm
             target: linux-arm64
-            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-linux-aarch64-1.1.3.tar.gz&objectKey=6a19350321f5a8178d6fd22c
-            sdk_sha256: 0b0ce42ce2492f654b00029687229188c82751418cb34df7990efd43eaf9c41f
+            sdk_platform: linux-aarch64
           - runner: macos-14
             target: darwin-arm64
-            sdk_url: https://cangjie-lang.cn/v1/files/auth/downLoad?nsId=142267&fileName=cangjie-sdk-mac-aarch64-1.1.3.tar.gz&objectKey=6a19312721f5a8178d6fd225
-            sdk_sha256: 7eff8d3b9119535cf3d05cb81526c5df391137dce908d744449f4edb99da3199
-    runs-on: ${{ matrix.runner }}
-    timeout-minutes: 35
+            sdk_platform: mac-aarch64
+          - runner: windows-2025
+            target: windows-amd64
+            sdk_platform: windows-x64
+    runs-on: ${{ matrix.host.runner }}
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Validate Linux native build tools
-        if: startsWith(matrix.target, 'linux-')
+        if: startsWith(matrix.host.target, 'linux-')
         shell: bash
         run: |
           command -v ar
@@ -76,27 +92,40 @@ jobs:
       - name: Install checksum-pinned Cangjie SDK
         shell: bash
         run: |
-          bash scripts/ci/install-cangjie-sdk.sh \
-            '${{ matrix.sdk_url }}' \
-            '${{ matrix.sdk_sha256 }}' \
-            "$RUNNER_TEMP/cangjie-sdk" \
-            "$RUNNER_TEMP/cangjie-env.sh"
+          set -euo pipefail
+          if command -v python3 >/dev/null 2>&1; then python_cmd=python3; else python_cmd=python; fi
+          printf 'PYTHON=%s\n' "$python_cmd" >> "$GITHUB_ENV"
+          PYTHON="$python_cmd" bash scripts/ci/bootstrap-cangjie-from-mirror.sh \
+            'https://github.com/HapPub/CangjieSDK-Mirror/releases/download/${{ matrix.sdk_version }}/manifest.v1.json' \
+            '${{ matrix.host.sdk_platform }}' \
+            "$RUNNER_TEMP/cangjie-sdk" "$RUNNER_TEMP/cangjie-env.sh" \
+            "$RUNNER_TEMP/cangjie-sdk-resolution.json"
       - name: Build, test, and package native binary
+        env:
+          HAP_EXPECTED_SDK_VERSION: ${{ matrix.sdk_version }}
         shell: bash
         run: |
           bash scripts/ci/build-release.sh \
-            '${{ matrix.target }}' \
-            '${{ needs.validate.outputs.version }}' \
-            "$RUNNER_TEMP/cangjie-env.sh" \
-            dist
+            '${{ matrix.host.target }}' '${{ needs.validate.outputs.version }}' \
+            "$RUNNER_TEMP/cangjie-env.sh" dist
+          cp "$RUNNER_TEMP/cangjie-sdk-resolution.json" \
+            "dist/hap-${{ needs.validate.outputs.version }}-${{ matrix.host.target }}.cangjie-sdk-resolution.json"
       - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
         with:
-          name: release-${{ matrix.target }}
+          name: release-${{ matrix.sdk_version }}-${{ matrix.host.target }}
           path: dist/*
           if-no-files-found: error
+      - name: Retain build diagnostics
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: diagnostics-${{ matrix.sdk_version }}-${{ matrix.host.target }}
+          path: ${{ runner.temp }}/hap-release-*.log
+          if-no-files-found: ignore
 
   publish:
     needs: [validate, source, native]
+    if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -104,9 +133,13 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
-          pattern: release-*
+          pattern: release-${{ fromJSON(needs.validate.outputs.sdk_versions)[0] }}-*
           path: dist
           merge-multiple: true
+      - uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
+        with:
+          name: release-source
+          path: dist
       - name: Build manifest from verified artifacts
         shell: bash
         run: |
@@ -114,32 +147,29 @@ jobs:
           cp release/hapup.sh dist/hapup.sh
           chmod 0755 dist/hapup.sh
           python3 scripts/ci/render-release-manifest.py \
-            --dist dist \
-            --version '${{ needs.validate.outputs.version }}' \
-            --tag "$GITHUB_REF_NAME" \
-            --repository "$GITHUB_REPOSITORY" \
-            --output dist/manifest.v0.json \
-            --notes-output "$RUNNER_TEMP/release-notes.md"
+            --dist dist --version '${{ needs.validate.outputs.version }}' \
+            --tag "$GITHUB_REF_NAME" --repository "$GITHUB_REPOSITORY" \
+            --sdk-version '${{ fromJSON(needs.validate.outputs.sdk_versions)[0] }}' \
+            --source-revision "$GITHUB_SHA" \
+            --output dist/manifest.v0.json --notes-output "$RUNNER_TEMP/release-notes.md"
           cd dist
           sha256sum hapup.sh > hapup.sh.sha256
           sha256sum manifest.v0.json > manifest.v0.json.sha256
           find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 \
-            | sort -z \
-            | xargs -0 sha256sum > SHA256SUMS
+            | sort -z | xargs -0 sha256sum > SHA256SUMS
       - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
+          sdk='${{ fromJSON(needs.validate.outputs.sdk_versions)[0] }}'
+          latest=true
+          if [[ "$sdk" == 1.0.5 ]]; then latest=false; fi
+          title="HapCLI ${{ needs.validate.outputs.version }} — Cangjie $sdk"
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
-            gh release upload "$GITHUB_REF_NAME" dist/* --clobber
-            gh release edit "$GITHUB_REF_NAME" \
-              --title "HapCLI ${{ needs.validate.outputs.version }}" \
-              --notes-file "$RUNNER_TEMP/release-notes.md"
-          else
-            gh release create "$GITHUB_REF_NAME" dist/* \
-              --verify-tag \
-              --title "HapCLI ${{ needs.validate.outputs.version }}" \
-              --notes-file "$RUNNER_TEMP/release-notes.md"
+            printf 'release already exists; refusing to overwrite published assets\n' >&2
+            exit 1
           fi
+          gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --latest="$latest" \
+            --title "$title" --notes-file "$RUNNER_TEMP/release-notes.md"
