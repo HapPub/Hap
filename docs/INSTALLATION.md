@@ -43,6 +43,30 @@ keep its entire `bin` directory; copying only `hap` or `hap.exe` may lose requir
 libraries. Windows ZIP installation is manual; the POSIX bootstrap is not a
 PowerShell installer.
 
+## First installation of a compiler build
+
+For HapCLI 0.3.0 built with Cangjie 1.1.3, download and verify its bootstrap,
+then let it install the exact release. Use `1.0.5` in the tag for the LTS build.
+Run this after the chosen tag appears in GitHub Releases:
+
+```sh
+TAG=v0.3.0-cangjie-1.1.3
+BASE="https://github.com/HapPub/Hap/releases/download/$TAG"
+WORK="$(mktemp -d)"
+curl -fsSL "$BASE/hapup.sh" -o "$WORK/hapup.sh"
+curl -fsSL "$BASE/hapup.sh.sha256" -o "$WORK/hapup.sh.sha256"
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "$WORK" && sha256sum -c hapup.sh.sha256)
+else
+  (cd "$WORK" && shasum -a 256 -c hapup.sh.sha256)
+fi
+sh "$WORK/hapup.sh" install --version "$TAG"
+```
+
+On Windows, download `hap-0.3.0-windows-amd64.zip` and its SHA-256 sidecar
+from the selected release. Compare `Get-FileHash -Algorithm SHA256` with the
+sidecar, extract the ZIP, then run `bin\hap.exe version`. Keep its adjacent DLLs.
+
 ## First installation from an older release
 
 The following compatibility example selects the published **v0.1.0** assets.
