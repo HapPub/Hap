@@ -161,6 +161,10 @@ public func renderCangjieToolchainEnvironment(sdkHome: String, stdxHome: String,
 // Stage every write and preserve original startup files before publishing the selection.
 // The hook points to one atomically replaced file, so component failure cannot switch defaults.
 public func activateCangjieToolchainEnvironment(environment: String, home: String): Unit {
+    activateHapToolchainEnvironment("cangjie", environment, home)
+}
+
+public func activateHapToolchainEnvironment(subject: String, environment: String, home: String): Unit {
     if (home.size == 0) { throw Exception("HOME is required for shell activation") }
     let activationRoot = home + "/.hap"
     ensureCangjieToolchainDirectory(activationRoot)
@@ -187,7 +191,8 @@ public func activateCangjieToolchainEnvironment(environment: String, home: Strin
             if (exists(path) && !exists(path + ".hap-backup")) { File.writeTo(path + ".hap-backup", old.toArray()) }
             File.writeTo(path + ".hap-new", (old + hook).toArray())
         }
-        File.writeTo(envFile + ".new", environment.toArray())
+        let oldEnvironment = if (exists(envFile)) { String.fromUtf8(File.readFrom(envFile)) } else { "" }
+        File.writeTo(envFile + ".new", mergeHapToolchainEnvironment(oldEnvironment, subject, environment).toArray())
         for (path in paths) {
             // Preserve dotfile symlinks and permissions; staged content is ready before any write.
             File.writeTo(path, File.readFrom(path + ".hap-new"))
@@ -222,4 +227,20 @@ public func cangjieToolchainGetExitCode(output: String): Int64 {
 
 func ensureCangjieToolchainDirectory(path: String): Unit {
     if (!exists(path)) { Directory.create(path, recursive: true) }
+}
+
+// Keep provider selections in a single atomic file. Preserve legacy Cangjie content
+// and replace only the selected provider block; no referenced mutable profile files.
+public func mergeHapToolchainEnvironment(previous: String, subject: String, environment: String): String {
+    let begin = "# hap:begin:" + subject + "\n"
+    let end = "# hap:end:" + subject + "\n"
+    let block = begin + environment + "\n" + end
+    let start = indexOfText(previous, begin)
+    if (start >= 0) {
+        let stop = indexOfTextFrom(previous, end, start + begin.size)
+        if (stop < 0) { throw Exception("malformed managed environment block") }
+        return substringRange(previous, 0, start) + block + substringFrom(previous, stop + end.size)
+    }
+    if (subject == "cangjie" && !containsText(previous, "# hap:begin:")) { return block }
+    return previous + if (previous.size == 0 || previous.endsWith("\n")) { "" } else { "\n" } + block
 }

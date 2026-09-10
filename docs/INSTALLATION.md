@@ -99,3 +99,5 @@ project configuration corrected. The installer supplies the actual `cjnative`
 paths; it does not disguise a compiler ABI or rewrite a project's requirements.
 The old `hap get cangjie-sdk` and `hap get cangjie-stdx` commands remain planners;
 `hap install cangjie*` remains the component-level installation interface.
+
+For IBM Semeru JDK, Android SDK/NDK, OpenHarmony SDK and HarmonyOS Command Line Tools, see [SDK and JDK installation](SDK_TOOLCHAINS.md). These `hap get` commands execute installation and support a read-only `--plan`.

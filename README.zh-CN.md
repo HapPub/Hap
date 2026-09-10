@@ -305,3 +305,5 @@ HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提�
 ## 许可证
 
 HapCLI 使用 [Apache License 2.0](LICENSE) 发布。项目归属说明见 [NOTICE](NOTICE)。
+
+SDK 与 JDK 硬安装：`hap get jdk --provider semeru --version 17`、`hap get android --version 36 --accept-licenses`、`hap get ohos --version 6.0 --profile native`。HarmonyOS 安装包、平台范围、许可与验证说明见 [SDK 安装指南](docs/SDK_TOOLCHAINS.md)。

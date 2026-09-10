@@ -319,3 +319,5 @@ HapCLI не является официальным инструментом Can
 ## Лицензия
 
 HapCLI распространяется по [Apache License 2.0](LICENSE). Сведения об авторстве проекта находятся в [NOTICE](NOTICE).
+
+Установка SDK и JDK: `hap get jdk --provider semeru --version 17`, `hap get android --version 36 --accept-licenses`, `hap get ohos --version 6.0 --profile native`. Пакеты HarmonyOS, поддерживаемые платформы и проверки описаны в [руководстве](docs/SDK_TOOLCHAINS.md).

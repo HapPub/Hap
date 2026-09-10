@@ -280,11 +280,11 @@ func substringFrom(text: String, start: Int64): String {
 
 func substringRange(text: String, start: Int64, end: Int64): String {
     let runes = text.toRuneArray()
-    var out = ""
+    let out = StringBuilder()
     var i = start
     while (i < end && i < runes.size) {
-        out += runes[i].toString()
+        out.append(runes[i])
         i += 1
     }
-    out
+    out.toString()
 }

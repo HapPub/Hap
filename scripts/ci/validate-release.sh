@@ -32,4 +32,9 @@ grep -Fq "HapCliVersion: String = \"$version\"" src/hapcli.cj || {
   exit 1
 }
 
+grep -Fq "VERSION=\"$version\"" release/hapup.sh || {
+  printf 'hapup version does not match %s\n' "$version" >&2
+  exit 1
+}
+
 printf '%s\n' "$version"

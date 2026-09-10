@@ -374,3 +374,5 @@ issue.
 
 HapCLI is released under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE)
 for project attribution.
+
+SDK and JDK installation: `hap get jdk --provider semeru --version 17`, `hap get android --version 36 --accept-licenses`, and `hap get ohos --version 6.0 --profile native`. See [SDK installation](docs/SDK_TOOLCHAINS.md) for HarmonyOS packages, platform availability, licensing and verification.

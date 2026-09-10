@@ -487,10 +487,15 @@ public func runHapCli(commandLine: Array<String>): Int64 {
     }
     if (command == "get") {
         if (commandLine.size <= 2) {
-            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie|cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
+            println(renderInspectCjpmErrorJson("missing-input", "usage: hap get <cangjie|jdk|android|ohos|harmonyos|cangjie-stdx|cangjie-sdk> --target=<target> --version=<version> [--region=auto|global|zh-cn | --provider-url=<url>] --install-root=<path> [--sha256=<sha256>|--allow-unverified]"))
             return 2
         }
         let subject = commandLine[2]
+        if (subject == "jdk" || subject == "semeru" || subject == "android" || subject == "ohos" || subject == "openharmony" || subject == "harmonyos") {
+            let output = runSdkToolchainGet(commandLine)
+            println(output)
+            return cangjieToolchainGetExitCode(output)
+        }
         if (subject == "cangjie") {
             let output = runCangjieToolchainGet(commandLine)
             println(output)
@@ -759,6 +764,11 @@ public func renderHapCliHelp(): String {
     "  ci executor-snippet                               Emit a reviewed CI snippet for executor adoption review\n" +
     "  ci hosted-proof-pack                              Write a non-mutating hosted CI proof workflow pack\n" +
     "  release manifest                                  Emit release asset/checksum truth without publishing assets\n" +
+    "  get jdk --provider semeru --version 17|21       Install IBM Open Edition JDK from GitHub Releases\n" +
+    "  get android --version 36 --accept-licenses     Install SDK, build-tools and private JDK; --ndk/--cmake optional\n" +
+    "  get ohos --version 6.0 [--profile native]       Install OpenHarmony SDK and native toolchain\n" +
+    "  get harmonyos --accept-licenses                Install public Linux CLT; other builds use --archive/--url + --sha256\n" +
+    "    SDK options: --plan --no-activate --install-root PATH --archive PATH --sha256 HEX\n" +
     "  get cangjie [--version sts|1.1.3|lts|nightly]    Download, verify, install SDK + matching stdx, and activate\n" +
     "       [--plan] [--no-activate]                    Read-only preview, or install without changing shell defaults\n" +
     "  install cangjie[@version]                        Exact no-option command opens TUI; explicit forms install the SDK\n" +

@@ -110,6 +110,7 @@ fi
 }
 if [[ "$target" != windows-amd64 ]]; then
   run_logged_phase toolchain-get python3 tests/cangjie-toolchain-get.py "$binary"
+  run_logged_phase sdk-toolchain-get python3 tests/sdk-toolchain-get.py "$binary"
 fi
 phase=sdk-environment-binary-smoke
 [[ "$("$binary" version)" == "$version" ]] || {
