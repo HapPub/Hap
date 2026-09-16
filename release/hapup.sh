@@ -8,13 +8,18 @@ usage() {
 Usage:
   hapup version
   hapup help
-  hapup install [--version latest|<version>] [--target auto|<target>] [--install-dir <dir>] [--no-path]
+  hapup install [--version latest|<version>] [--target auto|<target>] [--install-dir <dir>] [--no-path] [--region auto|global|zh-cn] [--route auto|direct|ghfast|ghproxy]
   hapup install-from-manifest --manifest <path|file://...|https://...> --install-dir <dir> [--target auto|darwin-arm64|darwin-amd64|linux-amd64|linux-arm64] [--manifest-sha256 <sha256>] [--receipt <path>] [--review-token <token>] [--allow-system-dir] [--allow-unverified-manifest]
   hapup install-flagship --asset <path|file://...|https://...> --sha256 <sha256> --install-dir <dir> [--receipt <path>] [--review-token <token>] [--allow-system-dir]
   hapup restore-flagship --install-dir <dir> [--backup <path>] [--receipt <path>] [--review-token <token>] [--allow-system-dir]
   hapup install-cangjie-sdk --archive <path|file://...|https://...> --target ohos-arm64 --install-root <dir> [--version <version>] [--sha256 <sha256>|--allow-unverified] [--receipt <path>] [--review-token <token>] [--replace] [--binary-sign-tool <path>] [--no-sign-ohos-binaries]
 
 Hapup is the thin bootstrap companion for HapCLI.
+HTTPS downloads require curl. Automatic routing probes direct and Mainland
+accelerators for checksum-pinned public assets, then switches away from slow or
+failed routes. --region global uses direct only; --region zh-cn includes Mainland
+routes. --route selects exactly one asset route. HAPUP_REGION / HAPUP_ROUTE also
+apply to advanced commands. Release discovery and checksum authority stay direct.
 The install command resolves an official release, verifies its manifest and binary,
 and installs into ~/.local/bin by default. No review token is needed. It adds a
 backed-up shell PATH hook unless --no-path is given. Advanced asset installation
@@ -131,27 +136,116 @@ json_escape() {
   printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-copy_asset() {
-  asset="$1"
-  output="$2"
-  case "$asset" in
-    http://*|https://*)
-      if command -v curl >/dev/null 2>&1; then
-        curl --proto =https --proto-redir =https --tlsv1.2 --connect-timeout 30 --max-time 900 --retry 2 -fsSL "$asset" -o "$output"
-      elif command -v wget >/dev/null 2>&1; then
-        wget -q "$asset" -O "$output"
-      else
-        fail "missing curl or wget for network asset"
-      fi
-      ;;
-    file://*)
-      /bin/cp "${asset#file://}" "$output"
-      ;;
-    *)
-      /bin/cp "$asset" "$output"
-      ;;
+# Route controls apply to transport only. Expected checksums must come from the
+# publisher, never from the accelerator selected for an archive.
+validate_download_options() {
+  case "${HAPUP_REGION:-auto}" in auto|global|zh-cn) ;; *) fail "invalid region: $HAPUP_REGION" ;; esac
+  case "${HAPUP_ROUTE:-auto}" in auto|direct|ghfast|ghproxy) ;; *) fail "invalid route: $HAPUP_ROUTE" ;; esac
+  case "${HAPUP_REGION:-auto}:${HAPUP_ROUTE:-auto}" in
+    global:ghfast|global:ghproxy) fail "global region conflicts with an accelerator route" ;;
   esac
 }
+
+route_url() {
+  case "$1" in
+    direct) printf '%s\n' "$2" ;;
+    ghfast) printf 'https://ghfast.top/%s\n' "$2" ;;
+    ghproxy) printf 'https://ghproxy.link/%s\n' "$2" ;;
+  esac
+}
+
+copy_asset() (
+  asset="$1"
+  output="$2"
+  expected="${3:-}"
+  validate_download_options
+  case "$asset" in
+    http://*) fail "download requires HTTPS" ;;
+    https://*) ;;
+    file://*) /bin/cp "${asset#file://}" "$output"; return ;;
+    *) /bin/cp "$asset" "$output"; return ;;
+  esac
+  need_cmd curl
+  region=${HAPUP_REGION:-auto}
+  selected=${HAPUP_ROUTE:-auto}
+  candidates=direct
+  # Restrict third-party routing to checksum-pinned public release assets.
+  # API discovery, checksum sidecars and arbitrary/private URLs stay direct.
+  case "$asset" in
+    https://github.com/HapPub/Hap/releases/download/*|https://github.com/HapPub/CangjieSDK-Mirror/releases/download/*)
+      if printf '%s\n' "$expected" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$'; then
+        case "$selected" in
+          direct) candidates=direct ;;
+          ghfast|ghproxy) candidates=$selected ;;
+          auto)
+            case "$region" in
+              global) candidates=direct ;;
+              zh-cn) candidates='ghfast ghproxy direct' ;;
+              auto) candidates='direct ghfast ghproxy' ;;
+            esac ;;
+        esac
+      fi ;;
+  esac
+  # URLs carrying query/fragment data are not forwarded to third parties.
+  case "$asset" in *'?'*|*'#'*) candidates=direct ;; esac
+  transfer_work=$(secure_temp_dir transfer)
+  trap 'rm -rf "$transfer_work"' 0
+  trap 'exit 130' HUP INT TERM
+  if [ "$selected" = auto ] && [ "$candidates" != direct ]; then
+    # Sample at most 64 KiB of archives to compare transfer speed. Small
+    # metadata uses HEAD latency. Unsupported probes remain GET fallbacks.
+    probe_index=0
+    for route in $candidates; do
+      probe_index=$((probe_index + 1))
+      (
+        probe_url=$(route_url "$route" "$asset")
+        probe_kind=latency
+        case "$asset" in *.tar.gz|*.tgz|*.zip|*.exe) probe_kind=speed ;; esac
+        if [ "$probe_kind" = speed ]; then
+          if observed=$(curl --disable --proto =https --proto-redir =https --tlsv1.2 \
+            --connect-timeout 2 --max-time 4 --range 0-65535 --max-filesize 65536 \
+            -fsSL -o /dev/null -w '%{speed_download}' "$probe_url" 2>/dev/null); then
+            score=$(printf '%s\n' "$observed" | awk '/^[0-9]+([.][0-9]+)?$/ {printf "%.0f", -$1}')
+          else score=; fi
+        else
+          if observed=$(curl --disable --proto =https --proto-redir =https --tlsv1.2 \
+            --connect-timeout 2 --max-time 4 -fsSLI -o /dev/null \
+            -w '%{time_total}' "$probe_url" 2>/dev/null); then
+            score=$(printf '%s\n' "$observed" | awk '/^[0-9]+([.][0-9]+)?$/ {printf "%.0f", $1 * 1000000}')
+          else score=; fi
+        fi
+        printf '%s %s %s\n' "${score:-999999999}" "$probe_index" "$route" > "$transfer_work/probe-$probe_index"
+      ) &
+    done
+    wait
+    candidates=$(sort -n -k1,1 -k2,2 "$transfer_work"/probe-* | awk '{print $3}')
+  fi
+  attempts=0
+  for route in $candidates; do
+    attempts=$((attempts + 1))
+    download_url=$(route_url "$route" "$asset")
+    printf 'Downloading via %s (region=%s, attempt=%s)\n' "$route" "$region" "$attempts" >&2
+    # Small authority metadata has a shorter bound. Large, pinned archives
+    # abandon a stalled/slow route after 15 seconds below 16 KiB/s.
+    transfer_timeout=30
+    [ -z "$expected" ] || transfer_timeout=900
+    if curl --disable --proto =https --proto-redir =https --tlsv1.2 \
+      --connect-timeout 5 --max-time "$transfer_timeout" --speed-limit 16384 \
+      --speed-time 15 -fsSL "$download_url" -o "$transfer_work/payload"; then
+      if [ -z "$expected" ] || verify_checksum "$transfer_work/payload" "$expected"; then
+        /bin/mv "$transfer_work/payload" "$output"
+        printf '{"region":"%s","route":"%s","attempts":%s}\n' \
+          "$region" "$route" "$attempts" > "$output.download.json"
+        return 0
+      fi
+      printf 'Checksum rejected on %s; trying the next eligible route.\n' "$route" >&2
+    else
+      printf 'Download failed or became too slow on %s; trying the next eligible route.\n' "$route" >&2
+    fi
+    rm -f "$transfer_work/payload"
+  done
+  fail "all eligible download routes failed; use --region global or --route direct|ghfast|ghproxy to select transport"
+)
 
 host_target() {
   os=$(uname -s 2>/dev/null || printf unknown)
@@ -287,7 +381,9 @@ write_receipt() {
   manifest_path_json=$(printf '%s' "${HAPUP_MANIFEST_PATH:-}" | sed 's/\\/\\\\/g; s/"/\\"/g')
   resolved_target_json=$(printf '%s' "${HAPUP_RESOLVED_TARGET:-}" | sed 's/\\/\\\\/g; s/"/\\"/g')
   asset_id_json=$(printf '%s' "${HAPUP_ASSET_ID:-}" | sed 's/\\/\\\\/g; s/"/\\"/g')
-  printf '{"schema":"happub-hapup-install-receipt-v0","ok":%s,"installSource":"%s","manifestPath":"%s","resolvedTarget":"%s","assetId":"%s","asset":"%s","installDir":"%s","installedBin":"%s","backupPath":"%s","backupCreated":%s,"installActionTaken":true,"atomicReplace":true,"canonMutation":false}\n' "$ok" "$install_source_json" "$manifest_path_json" "$resolved_target_json" "$asset_id_json" "$asset_json" "$install_dir_json" "$installed_bin_json" "$backup_path_json" "$backup_created" > "$receipt"
+  download_json=null
+  if [ -f "${ASSET_FILE:-}.download.json" ]; then download_json=$(cat "$ASSET_FILE.download.json"); fi
+  printf '{"schema":"happub-hapup-install-receipt-v0","ok":%s,"installSource":"%s","manifestPath":"%s","resolvedTarget":"%s","assetId":"%s","asset":"%s","installDir":"%s","installedBin":"%s","backupPath":"%s","backupCreated":%s,"installActionTaken":true,"atomicReplace":true,"download":%s,"canonMutation":false}\n' "$ok" "$install_source_json" "$manifest_path_json" "$resolved_target_json" "$asset_id_json" "$asset_json" "$install_dir_json" "$installed_bin_json" "$backup_path_json" "$backup_created" "$download_json" > "$receipt"
 }
 
 write_restore_receipt() {
@@ -457,7 +553,7 @@ install_from_manifest() {
   ASSET_OBJECT="$WORK/asset.json"
   trap 'rm -rf "$WORK"' EXIT HUP INT TERM
 
-  copy_asset "$MANIFEST" "$MANIFEST_FILE"
+  copy_asset "$MANIFEST" "$MANIFEST_FILE" "$MANIFEST_SHA256"
   if [ -n "$MANIFEST_SHA256" ]; then
     verify_checksum "$MANIFEST_FILE" "$MANIFEST_SHA256"
   fi
@@ -571,7 +667,7 @@ install_flagship() {
   mkdir -p "$EXTRACT_DIR"
   trap 'rm -rf "$WORK"' EXIT HUP INT TERM
 
-  copy_asset "$ASSET" "$ASSET_FILE"
+  copy_asset "$ASSET" "$ASSET_FILE" "$SHA256"
   verify_checksum "$ASSET_FILE" "$SHA256"
 
   if tar -tzf "$ASSET_FILE" >/dev/null 2>&1; then
@@ -847,7 +943,7 @@ install_cangjie_sdk() {
   mkdir -p "$EXTRACT_DIR" "$INSTALL_ROOT"
   trap 'rm -rf "$WORK"' EXIT HUP INT TERM
 
-  copy_asset "$ARCHIVE" "$ARCHIVE_FILE"
+  copy_asset "$ARCHIVE" "$ARCHIVE_FILE" "$SHA256"
   CHECKSUM_VERIFIED=false
   if [ -n "$SHA256" ]; then
     verify_checksum "$ARCHIVE_FILE" "$SHA256"
@@ -986,14 +1082,18 @@ install_release() (
   HP_PATH=true
   while [ "$#" -gt 0 ]; do
     case "$1" in
-      --version|--target|--install-dir)
+      --version|--target|--install-dir|--region|--route)
         [ "$#" -ge 2 ] && [ -n "$2" ] || fail "missing value for $1"
         case "$1" in
+          --region) HAPUP_REGION=$2 ;;
+          --route) HAPUP_ROUTE=$2 ;;
           --version) HP_VERSION=$2 ;;
           --target) HP_TARGET=$2 ;;
           --install-dir) HP_DIR=$2 ;;
         esac
         shift 2 ;;
+      --region=*) HAPUP_REGION=${1#*=}; shift ;;
+      --route=*) HAPUP_ROUTE=${1#*=}; shift ;;
       --version=*) HP_VERSION=${1#*=}; shift ;;
       --target=*) HP_TARGET=${1#*=}; shift ;;
       --install-dir=*) HP_DIR=${1#*=}; shift ;;
@@ -1001,6 +1101,8 @@ install_release() (
       *) fail "unknown install option: $1" ;;
     esac
   done
+  validate_download_options
+  export HAPUP_REGION HAPUP_ROUTE
   HP_TARGET=$(canonical_install_target "$HP_TARGET")
   HP_DIR=$(prepare_install_dir "$HP_DIR")
   unsafe_install_dir "$HP_DIR" && fail "use a user-owned install directory"
@@ -1015,10 +1117,10 @@ install_release() (
   fi
   printf '%s\n' "$HP_TAG" | LC_ALL=C grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+([.-][A-Za-z0-9.-]+)?$' || fail "invalid or unavailable release version"
   HP_BASE="https://github.com/HapPub/Hap/releases/download/$HP_TAG"
-  copy_asset "$HP_BASE/manifest.v0.json" "$HP_WORK/manifest.v0.json"
   copy_asset "$HP_BASE/manifest.v0.json.sha256" "$HP_WORK/manifest.sha256"
   HP_SHA=$(awk 'NR == 1 {print $1}' "$HP_WORK/manifest.sha256")
   printf '%s\n' "$HP_SHA" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$' || fail "invalid manifest SHA-256"
+  copy_asset "$HP_BASE/manifest.v0.json" "$HP_WORK/manifest.v0.json" "$HP_SHA"
   verify_checksum "$HP_WORK/manifest.v0.json" "$HP_SHA" || fail "release manifest checksum rejected"
   # Use the pinned URL for relative asset resolution and retain its provenance in the receipt.
   (install_from_manifest --manifest "$HP_BASE/manifest.v0.json" --manifest-sha256 "$HP_SHA" \
@@ -1027,10 +1129,10 @@ install_release() (
   if [ -f "$0" ]; then
     cp "$0" "$HP_WORK/hapup"
   else
-    copy_asset "$HP_BASE/hapup.sh" "$HP_WORK/hapup"
     copy_asset "$HP_BASE/hapup.sh.sha256" "$HP_WORK/hapup.sha256"
     HP_SCRIPT_SHA=$(awk 'NR == 1 {print $1}' "$HP_WORK/hapup.sha256")
     printf '%s\n' "$HP_SCRIPT_SHA" | LC_ALL=C grep -Eq '^[a-fA-F0-9]{64}$' || fail "invalid hapup SHA-256"
+    copy_asset "$HP_BASE/hapup.sh" "$HP_WORK/hapup" "$HP_SCRIPT_SHA"
     verify_checksum "$HP_WORK/hapup" "$HP_SCRIPT_SHA" || fail "hapup checksum rejected"
   fi
   cp "$HP_WORK/hapup" "$HP_DIR/.hapup-new"

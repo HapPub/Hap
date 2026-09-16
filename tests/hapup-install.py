@@ -49,7 +49,7 @@ name='latest.json' if url.endswith('/latest') else url.rsplit('/',1)[1]
 shutil.copyfile(pathlib.Path(os.environ['FIXTURE'])/name, args[args.index('-o')+1])
 ''')
     (mock / 'curl').chmod(0o755)
-    env = dict(os.environ, HOME=str(home), PATH=str(mock) + ':' + os.environ['PATH'], FIXTURE=str(work))
+    env = dict(os.environ, HAPUP_REGION='global', HOME=str(home), PATH=str(mock) + ':' + os.environ['PATH'], FIXTURE=str(work))
     def run(*args, success=True):
         p = subprocess.run(['sh', str(hapup), *args], env=env, text=True, capture_output=True)
         assert (p.returncode == 0) == success, (p.returncode, p.stdout, p.stderr)

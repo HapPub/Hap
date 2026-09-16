@@ -14,7 +14,7 @@
       "target": "portable-posix-shell",
       "name": "hapup.sh",
       "url": "https://cli.hap.pub/install/hapup.sh",
-      "sha256": "d4aeafe10f2257d26e74fbfd91267ff81a7f8adcbc2fe1368ab5ba039e0fec92",
+      "sha256": "ea804ebf02376bcd691ae93c041e770abddd68685e6a634e21fd4c8c536879ce",
       "installRole": "thin-bootstrap-companion",
       "downloadable": true,
       "executable": true

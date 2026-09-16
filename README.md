@@ -40,6 +40,8 @@ hapup install
 hap version
 ```
 
+Hapup source now supports [adaptive download routes](docs/INSTALLATION.md#download-routes): automatic throughput probing, Mainland accelerators, low-speed fallback, and `--region global|zh-cn` / `--route` overrides. Use the updated script; older release assets are unchanged.
+
 For a first installation, see [installing HapCLI](docs/INSTALLATION.md).
 If the published binary predates the commands below,
 [build this checkout](docs/INSTALLATION.md#build-from-source).

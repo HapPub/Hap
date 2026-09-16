@@ -34,6 +34,8 @@ hapup install
 hap version
 ```
 
+Hapup 源码已补齐[自适应下载线路](docs/INSTALLATION.md#download-routes)：自动测速、大陆加速、低速切换，以及 `--region global|zh-cn` / `--route` 手动选择。需使用更新后的脚本，旧发行资产保持不变。
+
 首次安装见[安装说明](docs/INSTALLATION.md)。如果已发布二进制还不支持下面的命令，
 可[从当前源码构建](docs/INSTALLATION.md#build-from-source)。
 完整仓颉安装需要 HapCLI 0.2.0 或更新版本；SDK/JDK 安装需要 **0.3.0 或更新版本**。
