@@ -19,11 +19,16 @@ with tempfile.TemporaryDirectory(prefix="hapup-install-'quoted-") as tmp:
     mock.mkdir()
     payload = work / 'payload'
     payload.mkdir()
-    (payload / 'hap').write_text('#!/bin/sh\necho "HapCLI fixture"\n')
+    runtime_id = 'a' * 24
+    runtime = payload / '.hap-runtime' / runtime_id
+    runtime.mkdir(parents=True)
+    (runtime / 'value').write_text('runtime fixture')
+    (payload / 'hap').write_text('#!/bin/sh\n[ -f "$(dirname -- "$0")/.hap-runtime/' + runtime_id + '/value" ] || exit 83\necho "HapCLI fixture"\n')
     (payload / 'hap').chmod(0o755)
     archive = work / 'hap.tar.gz'
     with tarfile.open(archive, 'w:gz') as tf:
         tf.add(payload / 'hap', arcname='bin/hap')
+        tf.add(payload / '.hap-runtime', arcname='bin/.hap-runtime')
     target = ('darwin' if platform.system() == 'Darwin' else 'linux') + '-' + ('arm64' if platform.machine() in ['arm64', 'aarch64'] else 'amd64')
     base = 'https://github.com/HapPub/Hap/releases/download/v0.2.0'
     manifest = work / 'manifest.v0.json'
@@ -44,7 +49,7 @@ name='latest.json' if url.endswith('/latest') else url.rsplit('/',1)[1]
 shutil.copyfile(pathlib.Path(os.environ['FIXTURE'])/name, args[args.index('-o')+1])
 ''')
     (mock / 'curl').chmod(0o755)
-    env = dict(os.environ, HOME=str(home), PATH=str(mock) + ':' + os.environ['PATH'], FIXTURE=str(work))
+    env = dict(os.environ, HAPUP_REGION='global', HOME=str(home), PATH=str(mock) + ':' + os.environ['PATH'], FIXTURE=str(work))
     def run(*args, success=True):
         p = subprocess.run(['sh', str(hapup), *args], env=env, text=True, capture_output=True)
         assert (p.returncode == 0) == success, (p.returncode, p.stdout, p.stderr)
@@ -55,6 +60,7 @@ shutil.copyfile(pathlib.Path(os.environ['FIXTURE'])/name, args[args.index('-o')+
     run()  # no-argument bootstrap resolves latest once, then uses the pinned tag
     installed = home / '.local/bin/hap'
     assert installed.is_file() and (home / '.local/bin/hapup').is_file()
+    assert (installed.parent / '.hap-runtime' / runtime_id / 'value').read_text() == 'runtime fixture'
     assert (home / '.zshrc.hap-backup').read_text() == '# personal config\n'
     assert (home / '.zshrc').is_symlink(), 'dotfile symlink replaced'
     assert 'HapCLI' in (home / '.bash_profile').read_text()

@@ -421,11 +421,13 @@ func verifyCangjieBootstrapSha256(path: String, expected: String): Bool {
         return false
     }
     var result = HapBuildCommandResult()
-    if (isProgramResolvable("shasum")) {
-        let (code, out, err) = executeWithOutput("shasum", ["-a", "256", path])
-        result = HapBuildCommandResult(code, String.fromUtf8(out), String.fromUtf8(err))
-    } else if (isProgramResolvable("sha256sum")) {
+    // Prefer the native executable: shasum may be an unlaunchable Perl script
+    // when called directly by a Windows process.
+    if (isProgramResolvable("sha256sum")) {
         let (code, out, err) = executeWithOutput("sha256sum", [path])
+        result = HapBuildCommandResult(code, String.fromUtf8(out), String.fromUtf8(err))
+    } else if (isProgramResolvable("shasum")) {
+        let (code, out, err) = executeWithOutput("shasum", ["-a", "256", path])
         result = HapBuildCommandResult(code, String.fromUtf8(out), String.fromUtf8(err))
     } else {
         return false
@@ -489,6 +491,12 @@ func bootstrapArchiveListUnsafe(listing: String): Bool {
 }
 
 func findBootstrapEnvsetup(root: String): String {
+    if (root.size == 0 || !exists(root)) { return "" }
+    // Standard layouts need no external search; Windows find.exe is a text
+    // search program and does not implement the POSIX directory traversal.
+    for (candidate in [root + "/cangjie/envsetup.sh", root + "/envsetup.sh"]) {
+        if (exists(candidate)) { return candidate }
+    }
     if (root.size == 0 || !exists(root) || !isProgramResolvable("find")) {
         return ""
     }

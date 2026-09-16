@@ -35,6 +35,74 @@ they are not an independent signature of the publisher.
 location. Advanced `install-from-manifest` and `install-flagship` commands remain
 available, with their explicit checksum and review-token contracts.
 
+For the two compiler builds, see [toolchain-qualified releases](RELEASING.md#selecting-a-toolchain-qualified-release).
+A release may carry runtime libraries required by its build compiler. Hapup copies
+the content-addressed macOS runtime directory before validating the new binary and
+retains prior directories for backup/restore. If installing an archive manually,
+keep its entire `bin` directory; copying only `hap` or `hap.exe` may lose required
+libraries. Windows ZIP installation is manual; the POSIX bootstrap is not a
+PowerShell installer.
+
+## Download routes
+
+Updated Hapup source supports automatic international/Mainland download routing:
+
+```sh
+hapup install                         # auto-detect actual route performance
+hapup install --region zh-cn          # include Mainland accelerators
+hapup install --region global         # direct international route only
+hapup install --route ghfast          # force one archive route; no route fallback
+hapup install --route ghproxy
+hapup install --route direct
+```
+
+`--region auto` is the default. For checksum-pinned public HapPub release assets,
+Hapup compares direct GitHub, `ghfast.top`, and `ghproxy.link` concurrently. Archive
+probes sample at most 64 KiB per route within four seconds and prefer measured
+throughput; small metadata uses response time. Unsupported probes remain download
+fallbacks. During transfer, a route below 16 KiB/s for 15 seconds is abandoned.
+Network failures or incorrect bytes try the next eligible route. A forced route
+fails without silently switching. Probe results are temporary network observations.
+
+`HAPUP_REGION` and `HAPUP_ROUTE` provide defaults, including advanced installation
+commands; command-line flags override them. Invalid values and conflicting global/
+accelerator settings fail before network activity. HTTPS downloads require curl.
+Existing proxy environment variables are respected; local curl configuration files
+are not loaded. No proxy or shell configuration is changed by route selection.
+
+Release discovery and checksum sidecars remain on the publisher's HTTPS origin.
+Only assets with a known SHA-256 use accelerators; arbitrary hosts and URLs with
+query strings or fragments remain direct. If GitHub metadata is unreachable,
+choose an exact `--version` to skip discovery; trusted checksum retrieval is still
+required. The installer reports attempts and records the final archive region,
+route and attempt count in `hap-install-receipt.json`. All routes failing preserves
+the installed binary. This change does not rewrite older published Hapup files;
+use the updated script to obtain this behavior.
+
+## First installation of a compiler build
+
+For HapCLI 0.3.0 built with Cangjie 1.1.3, download and verify its bootstrap,
+then let it install the exact release. Use `1.0.5` in the tag for the LTS build.
+Run this after the chosen tag appears in GitHub Releases:
+
+```sh
+TAG=v0.3.0-cangjie-1.1.3
+BASE="https://github.com/HapPub/Hap/releases/download/$TAG"
+WORK="$(mktemp -d)"
+curl -fsSL "$BASE/hapup.sh" -o "$WORK/hapup.sh"
+curl -fsSL "$BASE/hapup.sh.sha256" -o "$WORK/hapup.sh.sha256"
+if command -v sha256sum >/dev/null 2>&1; then
+  (cd "$WORK" && sha256sum -c hapup.sh.sha256)
+else
+  (cd "$WORK" && shasum -a 256 -c hapup.sh.sha256)
+fi
+sh "$WORK/hapup.sh" install --version "$TAG"
+```
+
+On Windows, download `hap-0.3.0-windows-amd64.zip` and its SHA-256 sidecar
+from the selected release. Compare `Get-FileHash -Algorithm SHA256` with the
+sidecar, extract the ZIP, then run `bin\hap.exe version`. Keep its adjacent DLLs.
+
 ## First installation from an older release
 
 The following compatibility example selects the published **v0.1.0** assets.

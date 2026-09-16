@@ -19,10 +19,25 @@ jobs:
         run: sh tests/hapup-security.sh
       - name: Validate one-command bootstrap
         run: python3 tests/hapup-install.py
+      - name: Validate adaptive bootstrap download
+        run: python3 tests/hapup-download.py
       - name: Validate tag release contract
         run: sh tests/release-workflow.sh
       - name: Validate nightly native matrix contract
         run: sh tests/nightly-workflow.sh
+      - name: Verify published bootstrap download on the repair branch
+        if: github.ref == 'refs/heads/fix/hapup-adaptive-download'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for region in auto zh-cn global; do
+            test_home="$RUNNER_TEMP/hapup-live-$region"
+            mkdir -p "$test_home"
+            HOME="$test_home" sh release/hapup.sh install \
+              --version 0.3.0-cangjie-1.1.3 --region "$region" --no-path
+            env -i HOME="$test_home" PATH=/usr/bin:/bin "$test_home/.local/bin/hap" version
+            cat "$test_home/.local/bin/hap-install-receipt.json"
+          done
       - name: Verify release checksum parity
         shell: bash
         run: |

@@ -73,6 +73,29 @@ if (cd "$ROOT" && bash scripts/ci/validate-release.sh v0.1.1 >/dev/null 2>&1); t
   fail_test "mismatched tag was accepted"
 fi
 
+# Exercise the real build wrapper with a failing test command. Error traps must
+# leave the failed case and its exception in the public diagnostic.
+mkdir -p "$WORK/fake-sdk/bin" "$WORK/logs"
+cat > "$WORK/fake-sdk/bin/cjpm" <<'EOF'
+#!/bin/sh
+if [ "$1" = test ]; then
+  printf '[ ERROR ] CASE: diagnosticFixture\nRuntimeException: fixture launch failed\n'
+  exit 7
+fi
+exit 0
+EOF
+chmod +x "$WORK/fake-sdk/bin/cjpm"
+printf 'export PATH="%s:$PATH"\n' "$WORK/fake-sdk/bin" > "$WORK/env.sh"
+set +e
+(cd "$ROOT" && RUNNER_TEMP="$WORK/logs" GITHUB_ACTIONS=true HAP_EXPECTED_SDK_VERSION= \
+  bash scripts/ci/build-release.sh linux-amd64 0.3.0 "$WORK/env.sh" "$WORK/dist") \
+  > "$WORK/diagnostics.txt" 2>&1
+diagnostic_status=$?
+set -e
+[ "$diagnostic_status" -eq 7 ] || fail_test "test command exit status was lost"
+grep -q '::error.*phase=test; exit=7; detail=.*diagnosticFixture.*fixture launch failed' \
+  "$WORK/diagnostics.txt" || fail_test "test exception detail was lost"
+
 printf 'checksum fixture\n' > "$WORK/fixture.tar.gz"
 bash "$ROOT/scripts/ci/write-sha256-sidecar.sh" "$WORK/fixture.tar.gz"
 [ "$(awk '{print $2}' "$WORK/fixture.tar.gz.sha256")" = "fixture.tar.gz" ] || {

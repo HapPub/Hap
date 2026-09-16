@@ -40,11 +40,15 @@ hapup install
 hap version
 ```
 
+Hapup source now supports [adaptive download routes](docs/INSTALLATION.md#download-routes): automatic throughput probing, Mainland accelerators, low-speed fallback, and `--region global|zh-cn` / `--route` overrides. Use the updated script; older release assets are unchanged.
+
 For a first installation, see [installing HapCLI](docs/INSTALLATION.md).
 If the published binary predates the commands below,
 [build this checkout](docs/INSTALLATION.md#build-from-source).
 Complete Cangjie installation requires HapCLI 0.2.0 or newer; SDK/JDK installation
 requires **0.3.0 or newer**.
+
+The build compiler can be selected independently: see [Cangjie 1.0.5 / 1.1.3 releases](docs/RELEASING.md#selecting-a-toolchain-qualified-release). Keep bundled runtime files when extracting a release manually.
 
 ### Install a toolchain
 
@@ -115,7 +119,7 @@ hap help
 - Diagnose GitHub Actions, generate reviewed CI recipes, and keep workflow
   mutation outside the CLI.
 - Keep normal output concise; use `-v` or `--verbose` for structured execution
-  details and `--write-receipt` for an explicit agent/CI handoff.
+  details and `--write-receipt` for an explicit automation/CI handoff.
 
 ## Common Workflows
 
@@ -152,7 +156,7 @@ HTTPS latency of the reviewed mirror, Mainland accelerators, and official
 source, then offers automatic-fastest or one forced route before final
 confirmation. A failed probe is displayed as unreachable, not as a fabricated
 latency. Scripts, redirected input, explicit package versions, and `--plan`
-remain non-interactive. Agents and CI can use
+remain non-interactive. Scripts and CI can use
 `--route auto|mirror|ghfast|ghproxy|official`; an exact forced route never
 silently falls back. Probe timing is transport evidence only and never replaces
 the pinned SHA-256 authority.
@@ -252,7 +256,8 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 | HarmonyOS Command Line Tools | Built-in Linux x64 5.1.0.840 catalog; official archive/URL override | Current macOS live-package acceptance remains incomplete; other hosts/releases require official assets and SHA-256. |
 | Cangjie/cjpm on macOS arm64 | Source, tests, and tag release lane verified | Current Cangjie 1.1.3 static runtime objects require macOS 13.3 even when the linker target is lower. |
 | Cangjie/cjpm on Linux AMD64/ARM64 | Tag release lanes available | Each release is published only after the native runner builds, tests, and smoke-checks its binary. |
-| Windows AMD64 and macOS Intel | Nightly native lanes verified | Stable `v0.1.0` remains unchanged; nightly binaries require build, test, package, and `hap version` gates on matching hosted runners. |
+| Windows AMD64 | Included in both toolchain-qualified release builds | Requires native tests and extracted ZIP smoke; SDK installation remains plan-only. |
+| macOS Intel | Nightly native build lane | No native SDK in the stable 1.0.5/1.1.3 catalog; matching nightly SDK required. |
 | OHOS ARM64/AMD64 | Nightly cross-build and link verification available | The artifacts are not runtime-smoked on an OHOS device and require a compatible target Cangjie runtime. |
 | Windows ARM64/x86 | Upstream gap recorded | The mirrored Cangjie release has no matching native host SDK, so HapCLI does not relabel another architecture as support. |
 | HarmonyOS applications | Real build/install/launch workflow available | Requires a working DevEco toolchain, authorized device, and valid signing profile. |
