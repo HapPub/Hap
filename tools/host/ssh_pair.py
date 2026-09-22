@@ -284,7 +284,23 @@ def ssh_main(args):
     root=ssh_state(o.state_root,create=False)
     if o.action=='doctor':
         tools={name:bool(shutil.which(name)) for name in ['ssh','ssh-keygen','openssl']}
-        return {'ok':True,'status':'diagnosed','host':host_id(),'tools':tools,'installReady':tools['ssh'],'pairDependenciesReady':all(tools.values()),'pairReady':False,'sshAuthenticated':False,'guiSessionVerified':False,'target':o.target}
+        versions={};health={}
+        for name,flag in [('ssh','-V'),('openssl','version')]:
+            if tools[name]:
+                observed=subprocess.run([ssh_tool(name),flag],capture_output=True,timeout=10)
+                health[name]=observed.returncode==0
+                versions[name]=(observed.stderr+observed.stdout).decode('utf-8','replace')[:300].strip()
+        result={'ok':True,'status':'diagnosed','host':host_id(),'tools':tools,'healthy':health,'versions':versions,'installReady':health.get('ssh',False),'pairDependenciesReady':all(tools.values()) and all(health.values()),'pairReady':False,'sshAuthenticated':False,'guiSessionVerified':False}
+        if os.name=='nt':
+            script="$s=Get-CimInstance Win32_Service -Filter \"Name='sshd'\" -ErrorAction SilentlyContinue; if($s){@{state=$s.State;path=$s.PathName;pid=$s.ProcessId;startMode=$s.StartMode;ports=@(Get-NetTCPConnection -State Listen -OwningProcess $s.ProcessId -ErrorAction SilentlyContinue | Select-Object -ExpandProperty LocalPort -Unique)} | ConvertTo-Json -Compress}else{'null'}"
+            result['service']=json.loads(command(['powershell.exe','-NoProfile','-NonInteractive','-Command',script]))
+            result['diagnosticHint']='Entry-point or dependency errors such as 0xC0000139 need binary/path analysis; do not replace random system DLLs.'
+        if o.target:
+            token(o.target);alias=read_json(root/('alias-'+o.target+'.json'));peer=alias['peerId'];require(re.fullmatch('[0-9a-f]{32}',peer),'invalid peer id')
+            saved=read_json(root/('client-'+peer+'.json'))
+            result['target']={k:saved[k] for k in ['peerId','ip','port','user','hostKeyFingerprint']}
+            result['identityFilesPresent']=(root/('key-'+peer)).is_file() and (root/('known-'+peer)).is_file()
+        return result
     if o.action=='peers':
         return {'ok':True,'peers':[{k:v for k,v in read_json(f).items() if k in ('peerId','user','status','ip','authorization','hostKeyFingerprint')} for f in sorted(root.glob('*-*.json')) if f.name.startswith(('host-','client-'))]}
     require(root.exists(),'no SSH state')
