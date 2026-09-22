@@ -374,3 +374,7 @@ issue.
 
 HapCLI is released under the [Apache License 2.0](LICENSE). See [NOTICE](NOTICE)
 for project attribution.
+
+## Installer engines and LAN SSH
+
+`hap get nsis|wix` installs an explicitly selected, checksum-pinned engine pack into private storage. `hap get ssh` prepares the client; explicit Windows server setup uses a selected Private LAN interface. `hap ssh --pair` and `hap ssh conn` enroll independent keys over certificate-bound TLS and pin the SSH host key. Python 3.11+, OpenSSH and OpenSSL prerequisites, examples, revocation and current platform limits are documented in [Host tools](docs/HOST_TOOLS.md).

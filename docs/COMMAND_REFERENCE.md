@@ -225,3 +225,7 @@ human or controlling process approved the exact inputs. It is not an identity
 or authorization system and is never intended to be stored in receipts.
 
 `get jdk|semeru|android|ohos|openharmony|harmonyos` performs native SDK installation, verification and optional activation. See [SDK and JDK commands](SDK_TOOLCHAINS.md) for exact options and upstream availability. `--plan` performs no network or writes; Windows/foreign targets are plan-only.
+
+## Installer and SSH host commands
+
+See [Host tools](HOST_TOOLS.md) for `hap get nsis|wix`, `hap installer inspect`, `hap get ssh`, and `hap ssh --pair|conn|peers|revoke|forget|doctor`, including prerequisites and execution limits.

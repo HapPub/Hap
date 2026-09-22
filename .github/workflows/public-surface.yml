@@ -15,6 +15,8 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
       - name: Validate public repository surface
         run: sh tests/public-surface.sh
+      - name: Verify embedded host helpers
+        run: python3 scripts/embed-host-tools.py --check
       - name: Validate Hapup security fixtures
         run: sh tests/hapup-security.sh
       - name: Validate one-command bootstrap
