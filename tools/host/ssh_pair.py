@@ -96,7 +96,8 @@ def confirm_pair(key, user, deadline, preauthorized):
 def authorized_file(user, allow_privileged=False):
     require(user.lower()==getpass.getuser().lower(),'run pairing as the selected existing account')
     if os.name=='nt':
-        admin = subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command','if ((New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {exit 0} else {exit 1}'],capture_output=True).returncode==0
+        # sshd uses group membership, including a UAC-filtered administrator token.
+        admin = subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',"if ([Security.Principal.WindowsIdentity]::GetCurrent().Groups.Value -contains 'S-1-5-32-544') {exit 0} else {exit 1}"],capture_output=True).returncode==0
         if admin:
             require(allow_privileged,'administrator enrollment needs --allow-privileged; shared administrators keys grant administrative shell access')
             return safe_root(Path(os.environ.get('ProgramData','C:/ProgramData'))/'ssh'/'administrators_authorized_keys')

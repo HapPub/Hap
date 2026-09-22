@@ -139,6 +139,8 @@ chmod 0755 "$stage/$package/bin/$binary_name"
 cp LICENSE NOTICE README.md "$stage/$package/"
 mkdir -p "$stage/$package/docs"
 cp docs/INSTALLATION.md docs/SDK_TOOLCHAINS.md docs/HOST_TOOLS.md "$stage/$package/docs/"
+mkdir -p "$stage/$package/tools/windows"
+cp tools/windows/desktop-session.ps1 "$stage/$package/tools/windows/"
 phase=bundle-native-runtime
 python_bin=${PYTHON:-python3}
 "$python_bin" "$hap_release_script_dir/bundle-native-runtime.py" \
