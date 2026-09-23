@@ -294,3 +294,7 @@ HapCLI 不是仓颉或 HarmonyOS 官方工具，不替代包管理器，不提�
 ## 许可证
 
 HapCLI 使用 [Apache License 2.0](LICENSE) 发布。项目归属说明见 [NOTICE](NOTICE)。
+
+## 安装器引擎与局域网 SSH
+
+`hap get nsis|wix` 将显式选择、固定摘要的工具包安装到私有目录。`hap get ssh` 准备客户端；Windows 服务端必须显式选择 Private 局域网接口。`hap ssh --pair` 与 `hap ssh conn` 通过绑定证书的 TLS 登记独立密钥，并固定 SSH 主机身份。Python 3.11+、OpenSSH、OpenSSL 前置条件、用法、撤权和当前平台缺口见[工具说明](docs/HOST_TOOLS.md)。

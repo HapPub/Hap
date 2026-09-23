@@ -18,6 +18,9 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         println(version())
         return 0
     }
+    if (command == "installer" || command == "ssh" || (command == "get" && commandLine.size > 2 && (commandLine[2] == "nsis" || commandLine[2] == "wix" || commandLine[2] == "ssh"))) {
+        return runHostTools(commandLine)
+    }
     if (command == "inspect-cjpm") {
         if (commandLine.size <= 2) {
             println(renderInspectCjpmErrorJson("missing-input", "usage: hap inspect-cjpm <cjpm.toml>"))
@@ -704,6 +707,11 @@ public func shouldUseKmpIosArtifactDevExecution(options: HapProjectActionOptions
 
 public func renderHapCliHelp(): String {
     "HapCLI " + version() + "\n\nCommands:\n" +
+    "  get nsis|wix --version V --archive A --sha256 H  Verify and privately manage an engine pack (Python 3.11+)\n" +
+    "  installer inspect --engine nsis|wix [--bundle D] Inspect discovery or verify a selected bundle\n" +
+    "  get ssh [--server --listen LAN_IP] [--plan]     Prepare client or explicit Windows Private LAN service\n" +
+    "  ssh --pair --listen LAN_IP | conn CODE         TLS-pinned LAN enrollment; OpenSSH/OpenSSL required\n" +
+    "  ssh peers | revoke PEER | doctor               Persistent authorization until server-side revoke\n" +
     "  inspect-cjpm <cjpm.toml>                         Inspect Cangjie cjpm dependency profile and emit JSON\n" +
     "  plan-switch <cjpm.toml> <profiles.toml> <target>  Preview a read-only dependency profile switch plan\n" +
     "  apply-switch <cjpm.toml> <profiles.toml> <target> Write reviewed switch output and receipt, never in-place by default\n" +
