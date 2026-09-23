@@ -22,6 +22,8 @@ HapCLI 是一套开源命令行兼容层，主要解决项目在开发机、CI�
 
 HapCLI 不替代 `cjpm`、Gradle、Xcode、DevEco Studio、`hdc` 或包管理器。它负责识别项目与环境事实，输出可审查的方案，调用有限且固定的工具适配器，并记录结构化结果。
 
+查看[能力矩阵](docs/CAPABILITIES.md)，区分已实现、已验证主机与当前限制。宿主工具命令需要 Python 3.11+；SSH 配对还需要 OpenSSH 与 OpenSSL。
+
 ## 快速开始
 
 本说明对应**源码版本 0.3.0**。可下载的版本和主机资产以

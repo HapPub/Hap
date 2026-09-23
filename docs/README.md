@@ -1,5 +1,9 @@
 # HapCLI Documentation
 
+- [Capability matrix](CAPABILITIES.md)
+- [Installation and download routes](INSTALLATION.md)
+- [SDK/JDK installation](SDK_TOOLCHAINS.md)
+- [Installer engines and SSH](HOST_TOOLS.md)
 - [Command reference](COMMAND_REFERENCE.md)
 - [Architecture](ARCHITECTURE.md)
 - [Package-control protocol](HAPPUB_PACKAGE_CONTROL_PROTOCOL_V0_2026-06-07.md)

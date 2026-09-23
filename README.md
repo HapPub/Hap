@@ -27,6 +27,8 @@ HapCLI does not replace `cjpm`, Gradle, Xcode, DevEco Studio, `hdc`, or a packag
 manager. It detects project and environment facts, produces reviewable plans,
 executes a bounded set of fixed tool adapters, and records structured results.
 
+See the [capability matrix](docs/CAPABILITIES.md) for implementation status, verified hosts and known limitations. Host-tool commands require Python 3.11+; SSH pairing also requires OpenSSH and OpenSSL.
+
 ## Quick Start
 
 This README describes **source version 0.3.0**. Downloadable versions and host
