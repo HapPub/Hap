@@ -166,6 +166,12 @@ public func runSdkToolchainGet(args: Array<String>): String {
         if (o.plan) {
             return "{\"schema\":\"happub-sdk-get-v1\",\"ok\":true,\"status\":\"planned\",\"catalogActionTaken\":false,\"installed\":false,\"activated\":false,\"subject\":\"" + o.subject + "\",\"provider\":\"" + o.provider + "\",\"requestedVersion\":\"" + o.version + "\",\"target\":\"" + o.target + "\",\"profile\":\"" + o.profile + "\",\"licenseAcceptanceRequired\":" + boolJson(o.subject == "android" || o.subject == "harmonyos") + ",\"detail\":\"Resolution, asset availability and native validation are pending execution. No network or writes.\"}"
         }
+        if (o.subject == "jdk" && o.target == "windows-amd64" && o.target == detectNativeCangjieInstallTarget()) {
+            sdkValidatePrivateRoot(o.root)
+            let a = resolveSdkToolchainAsset(o)
+            let input = "{\"root\":\"" + escapeJson(o.root) + "\",\"version\":\"" + escapeJson(a.version) + "\",\"requestedVersion\":\"" + escapeJson(o.version) + "\",\"url\":\"" + escapeJson(a.url) + "\",\"archive\":\"" + escapeJson(o.archive) + "\",\"sha256\":\"" + escapeJson(a.sha256) + "\",\"authority\":\"" + escapeJson(a.authority) + "\",\"activate\":" + boolJson(o.activate) + ",\"target\":\"" + o.target + "\"}"
+            return captureHostTools("sdk-jdk-install", input)
+        }
         if (o.target != detectNativeCangjieInstallTarget() || startsWithText(o.target, "windows-")) { throw Exception("SDK execution currently requires native macOS/Linux; foreign targets are plan-only") }
         if ((o.subject == "android" || o.subject == "harmonyos") && !o.acceptLicenses) { throw Exception("license-acceptance-required: read https://developer.android.com/studio/terms or the selected Huawei package license; rerun with --accept-licenses after accepting applicable vendor terms") }
         sdkValidatePrivateRoot(o.root)

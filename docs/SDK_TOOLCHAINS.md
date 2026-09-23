@@ -33,9 +33,9 @@ inside one atomically published environment file.
 | `harmonyos` | Huawei Command Line Tools with its bundled SDK, Node, JDK, ohpm, hvigorw and hdc | Public Huawei mirror currently pins Linux x64 CLT 5.1.0.840. Other versions/hosts require a downloaded official archive or explicit HTTPS URL plus SHA-256. The current Huawei download center can require sign-in. |
 
 Installation and activation currently execute on a **native macOS or Linux
-host**. Windows and foreign-host targets are plan-only. A successful plan is not
+host**. Native Windows x64 also supports Semeru JDK ZIP installation (see below). Other Windows SDKs and foreign-host targets are plan-only. A successful plan is not
 an availability or installation claim. Missing upstream assets fail explicitly;
-HapCLI does not substitute another architecture. No Python, pip or npm dependency
+HapCLI does not substitute another architecture. The macOS/Linux installer has no Python, pip or npm dependency
 is added to the installer: it uses the native HapCLI binary and the host's curl,
 tar, unzip, find, shell and SHA-256 utility.
 
@@ -136,3 +136,24 @@ lock protects the combined environment. Failed staging created by the current
 run is removed. An interrupted staging directory or unknown partial destination
 is preserved for inspection and reported, not silently deleted. Move it aside
 before retrying once no installer is running. Existing system SDKs are untouched.
+
+## Windows Semeru JDK
+
+Native Windows x64 supports Semeru ZIP installation with Python 3.11+ and the
+system curl client. The same exact GitHub release/digest resolver is used as on
+macOS/Linux. Installation uses a private lock and staging directory, rejects
+archive links and path escapes, checks SHA-256, and compiles/runs a Java program
+before publication. Cache reuse checks the bound receipt and native tools.
+
+```powershell
+hap get jdk --provider semeru --version 17
+# Or install without changing the managed selection:
+hap get jdk --provider semeru --version 17 --no-activate
+```
+
+The returned PowerShell `activationHint` selects Java in the current shell.
+Default selection writes `~/.hap/env-jdk.ps1`; it does not change system PATH,
+registry environment variables, PowerShell profiles or execution policy. Source
+that script in any new shell where this Java should be active. With
+`--no-activate`, only the version-local `env.ps1` is written. Android, OHOS and
+HarmonyOS Windows execution are still separate pending adapters.

@@ -1,7 +1,8 @@
 try:
     require(sys.version_info >= (3,11), 'Python 3.11 or newer is required for host tools')
     args=sys.argv[1:]
-    if args[:2]==['get','ssh']:result=ssh_get(args[2:])
+    if args[:1]==['sdk-jdk-install']:result=windows_jdk_install(args[1])
+    elif args[:2]==['get','ssh']:result=ssh_get(args[2:])
     elif args[:1]==['get']:result=installer_main(args[1:])
     elif args[:1]==['installer']:result=installer_main(args[1:])
     elif args[:1]==['ssh']:result=ssh_main(args[1:])

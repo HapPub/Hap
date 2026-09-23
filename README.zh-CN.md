@@ -60,7 +60,7 @@ hap get ohos --version 6.0 --profile native
 安装器完成下载、校验和工具验证后，再激活私有环境。新终端自动加载，当前终端执行返回的
 `activationHint` 即可。`--plan` 不联网、不写文件；`--no-activate` 只安装，不切换当前选择。
 
-SDK/JDK 安装目前在**本机 macOS/Linux** 执行；Windows 和跨主机目标只提供计划。
+SDK 安装目前在**本机 macOS/Linux** 执行；Semeru JDK 另支持 **Windows x64**，需要 Python 3.11+，并返回 PowerShell 激活命令。其他 Windows SDK 和跨主机目标只提供计划。
 各提供方的目录范围不同，例如 HarmonyOS 内置目录目前对应 **Linux x64**：
 
 ```bash

@@ -1,7 +1,7 @@
 # HapCLI Architecture
 
 HapCLI has a Cangjie executable, a local-first state model, a POSIX bootstrap
-companion and embedded Python helpers for installer engines and SSH. The
+companion and embedded Python helpers for installer engines, SSH and the Windows JDK adapter. The
 implementation is intentionally conservative about execution: analysis and planning are broad, while mutation and external tool
 execution are limited to named adapters.
 

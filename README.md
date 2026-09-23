@@ -71,8 +71,9 @@ New terminals load it automatically; use the returned `activationHint` in the
 current terminal. `--plan` makes no network requests or writes;
 `--no-activate` installs without changing the active selection.
 
-The SDK/JDK commands execute on **native macOS/Linux**; Windows and foreign
-hosts are plan-only. Catalog coverage differs by provider. For example,
+SDK installation executes on **native macOS/Linux**. Semeru JDK also installs
+on **Windows x64** with Python 3.11+; use its returned PowerShell activation hint.
+Other Windows SDKs and foreign hosts are plan-only. Catalog coverage differs by provider. For example,
 HarmonyOS's built-in catalog currently covers **Linux x64**:
 
 ```bash

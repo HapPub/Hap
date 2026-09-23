@@ -267,7 +267,10 @@ public class HapCangjiePackageInstallTest {
         let savedSha = asset.sha256
         asset.url = "file://" + incompleteArchive
         asset.mirrorUrl = asset.url
-        asset.sha256 = hapPrntFileSha256(incompleteArchive)
+        let incompleteShaArgs = if (shaProgram == "sha256sum") { [incompleteArchive] } else { ["-a", "256", incompleteArchive] }
+        let (incompleteShaCode, incompleteShaOut, _) = executeWithOutput(shaProgram, incompleteShaArgs)
+        @Assert(incompleteShaCode, Int64(0))
+        asset.sha256 = firstBootstrapAsciiToken(String.fromUtf8(incompleteShaOut))
         let incompleteSdk = installResolvedCangjiePackage(options, asset)
         @Assert(incompleteSdk.status, "sdk-envsetup-not-found")
         @Assert(exists(finalRoot), false)

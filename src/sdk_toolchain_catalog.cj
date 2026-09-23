@@ -58,7 +58,7 @@ public func resolveSemeruAsset(o: HapSdkGetOptions): HapSdkAsset {
     let tag = jsonStringValueForKey(catalog, "tag_name")
     if (!startsWithText(tag, "jdk-" + major) || !sdkGetToken(tag) || jsonBoolValueAfter(catalog, indexOfText(catalog, "\"draft\"")) != "false" || jsonBoolValueAfter(catalog, indexOfText(catalog, "\"prerelease\"")) != "false") { throw Exception("Semeru release metadata does not identify a stable matching tag") }
     let arch = if (o.target.endsWith("arm64")) { "aarch64" } else { "x64" }
-    let os = if (startsWithText(o.target, "macos-")) { "mac" } else { "linux" }
+    let os = if (startsWithText(o.target, "macos-")) { "mac" } else if (startsWithText(o.target, "windows-")) { "windows" } else { "linux" }
     let prefix = "ibm-semeru-open-jdk_" + arch + "_" + os + "_"
     var cursor: Int64 = 0
     var count: Int64 = 0
@@ -71,7 +71,7 @@ public func resolveSemeruAsset(o: HapSdkGetOptions): HapSdkAsset {
         let url = jsonStringValueForKey(object, "browser_download_url")
         // File naming changed across OpenJ9 releases; architecture/OS/JDK role
         // and extension remain exact while the pinned release binds the version.
-        if (startsWithText(name, prefix) && name.endsWith(".tar.gz")) {
+        if (startsWithText(name, prefix) && name.endsWith(if (os == "windows") { ".zip" } else { ".tar.gz" })) {
             if (!startsWithText(url, "https://github.com/" + repo + "/releases/download/" + tag + "/")) { throw Exception("Semeru asset URL is outside its exact release") }
             count += 1
             a.url = url

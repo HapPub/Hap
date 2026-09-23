@@ -230,7 +230,7 @@ Commands that write reviewed files or run sensitive fixed adapters may require
 human or controlling process approved the exact inputs. It is not an identity
 or authorization system and is never intended to be stored in receipts.
 
-`get jdk|semeru|android|ohos|openharmony|harmonyos` performs native SDK installation, verification and optional activation. See [SDK and JDK commands](SDK_TOOLCHAINS.md) for exact options and upstream availability. `--plan` performs no network or writes; Windows/foreign targets are plan-only.
+`get jdk|semeru|android|ohos|openharmony|harmonyos` performs native SDK installation, verification and optional activation. See [SDK and JDK commands](SDK_TOOLCHAINS.md) for exact options and upstream availability. `--plan` performs no network or writes; Native Windows x64 supports Semeru JDK ZIP installation through Python 3.11+; Windows Android/OHOS/HarmonyOS and foreign targets remain plan-only.
 
 ## Installer and SSH host commands
 

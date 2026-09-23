@@ -46,6 +46,7 @@ jobs:
             target/release/bin/main.exe get ssh
             target/release/bin/main.exe get nsis --version 3.12 --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --plan
             target/release/bin/main.exe ssh doctor
+            python3 tests/windows-jdk.py target/release/bin/main.exe
           else
             python3 tests/host-contracts.py target/release/bin/main
             python3 tests/host-tools.py target/release/bin/main

@@ -19,11 +19,11 @@ performed. Unlisted host combinations are not verified by this matrix.
 | `hap get cangjie --version sts` | Installs matching SDK + stdx and verifies before activation | Real macOS compile/run; automatic activation requires native macOS/Linux; foreign targets require `--no-activate` and suitable host tools |
 | `hap install cangjie*` | Component installation; LTS, STS and dynamic nightly resolution | Does not activate the shell; `cangjie` means SDK only here; cache checks completion markers, not every extracted file |
 | `hap get cangjie-sdk`, `hap get cangjie-stdx` | Install one component without activation | `--plan` makes no network requests or writes; explicit legacy recipe options retain their old plan-only behavior |
-| `hap get jdk --provider semeru` | Resolves and installs IBM Semeru releases | Native macOS/Linux adapter; real macOS package proof; other host coverage depends on available assets |
+| `hap get jdk --provider semeru` | Resolves and installs IBM Semeru releases | Native macOS/Linux and Windows x64 adapters; real macOS package proof, Windows real-package CI pending; other hosts depend on available assets |
 | `hap get android` | Installs command-line tools, platforms and optional NDK/CMake | Native macOS/Linux adapter and fixture integration tests; real upstream end-to-end acceptance remains incomplete |
 | `hap get ohos` | Installs OpenHarmony SDK native/toolchains or full profile | Real macOS package/native-object proof; does not prove application signing or device execution |
 | `hap get harmonyos` | Installs CLT and manages its SDK/Node/JDK environment | Built-in catalog is Linux x64 5.1.0.840; other versions need an official archive/URL and SHA-256; real current-macOS package acceptance is incomplete |
-| SDK/JDK on Windows | Plans exist | SDK/JDK execution is rejected by the current adapter; a Windows CLI build does not change this |
+| SDK/JDK on Windows | Semeru JDK installs natively on x64; SDK plans exist | Windows JDK requires Python 3.11+ and uses a managed PowerShell script. Android/OHOS/HarmonyOS execution remains unsupported |
 | `hap installer inspect` | Discovers unmanaged NSIS/WiX; verifies explicitly selected bundles | Unmanaged discovery does not execute the detected compiler |
 | `hap get nsis` | Installs an explicitly supplied, pinned engine pack into private storage | Real macOS ARM64 NSIS 3.12 pack → consumer → install/portable EXE compilation; Windows EXE execution is not verified |
 | `hap get wix` | Separate verified-pack installation contract | Native execution requires Windows; real MSI compilation/installation is not verified |

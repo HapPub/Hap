@@ -6,7 +6,7 @@ from pathlib import Path
 import sys
 import zlib
 root=Path(__file__).resolve().parents[1]
-source='\n'.join((root/'tools/host'/p).read_text() for p in ['common.py','installer.py','ssh_pair.py','ssh_install.py','entry.py'])
+source='\n'.join((root/'tools/host'/p).read_text() for p in ['common.py','installer.py','ssh_pair.py','ssh_install.py','windows_sdk.py','entry.py'])
 encoded=base64.b64encode(zlib.compress(source.encode(),9)).decode()
 bootstrap="import base64,zlib;exec(compile(zlib.decompress(base64.b64decode('"+encoded+"')),'<hap-host-tools>','exec'))"
 # Keep the Windows CreateProcess command line below its limit.
