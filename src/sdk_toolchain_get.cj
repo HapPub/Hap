@@ -176,6 +176,7 @@ public func runSdkToolchainGet(args: Array<String>): String {
         lock = o.root + "/." + o.subject + "-install-lock"
         sdkCommand("mkdir", [lock])
         locked = true
+        writeHapInstallLockOwner(lock, o.subject + "-install")
         var javaKey = ""
         if (o.subject == "android" && o.javaHome.size > 0) {
             File.writeTo(lock + "/java-home.txt", o.javaHome.toArray())
@@ -197,7 +198,7 @@ public func runSdkToolchainGet(args: Array<String>): String {
             getStdErr().writeln("[2/4] Downloading and checking SHA-256...")
             if (o.archive.size > 0) { sdkCommand("cp", [o.archive, archive]) }
             else {
-                sdkCommand("curl", ["--proto", "=https", "--proto-redir", "=https", "--tlsv1.2", "--fail", "--location", "--silent", "--show-error", "--connect-timeout", "10", "--max-time", "1800", "--retry", "2", "--output", archive, asset.url])
+                sdkCommand("curl", hapHttpsDownloadArgs(asset.url, archive, 1800, 2))
             }
             if (!verifyCangjieBootstrapSha256(archive, asset.sha256)) { throw Exception("archive SHA-256 mismatch") }
             getStdErr().writeln("[3/4] Extracting and installing components...")
@@ -236,5 +237,5 @@ public func runSdkToolchainGet(args: Array<String>): String {
 }
 
 func renderSdkGetReceipt(o: HapSdkGetOptions, a: HapSdkAsset, root: String, receipt: String, cache: Bool, activated: Bool): String {
-    "{\"schema\":\"happub-sdk-get-v1\",\"ok\":true,\"status\":\"installed\",\"subject\":\"" + o.subject + "\",\"provider\":\"" + o.provider + "\",\"requestedVersion\":\"" + o.version + "\",\"resolvedVersion\":\"" + a.version + "\",\"observedVersion\":\"" + escapeJson(o.observedVersion) + "\",\"javaHome\":\"" + escapeJson(o.javaHome) + "\",\"apiVersion\":\"" + escapeJson(o.apiVersion) + "\",\"target\":\"" + o.target + "\",\"profile\":\"" + o.profile + "\",\"sha256\":\"" + a.sha256 + "\",\"checksumAuthority\":\"" + escapeJson(a.authority) + "\",\"sourceUrl\":\"" + escapeJson(a.url) + "\",\"checksumVerified\":" + boolJson(!cache) + ",\"cacheHit\":" + boolJson(cache) + ",\"nativeToolsVerified\":true,\"installed\":true,\"activated\":" + boolJson(activated) + ",\"finalRoot\":\"" + escapeJson(root) + "\",\"receipt\":\"" + escapeJson(receipt) + "\",\"activationHint\":\"" + escapeJson(". " + shellQuote(if (activated) { cangjiePackageEnvironmentPath("HOME") + "/.hap/env.sh" } else { root + "/env.sh" })) + "\"}"
+    "{\"schema\":\"happub-sdk-get-v1\",\"ok\":true,\"status\":\"installed\",\"subject\":\"" + o.subject + "\",\"provider\":\"" + o.provider + "\",\"requestedVersion\":\"" + o.version + "\",\"resolvedVersion\":\"" + a.version + "\",\"observedVersion\":\"" + escapeJson(o.observedVersion) + "\",\"javaHome\":\"" + escapeJson(o.javaHome) + "\",\"apiVersion\":\"" + escapeJson(o.apiVersion) + "\",\"target\":\"" + o.target + "\",\"profile\":\"" + o.profile + "\",\"sha256\":\"" + a.sha256 + "\",\"checksumAuthority\":\"" + escapeJson(a.authority) + "\",\"sourceUrl\":\"" + escapeJson(a.url) + "\",\"checksumVerified\":" + boolJson(!cache) + ",\"cacheHit\":" + boolJson(cache) + ",\"verificationLevel\":\"native-probe\",\"nativeToolsVerified\":true,\"installed\":true,\"activated\":" + boolJson(activated) + ",\"finalRoot\":\"" + escapeJson(root) + "\",\"receipt\":\"" + escapeJson(receipt) + "\",\"activationHint\":\"" + escapeJson(". " + shellQuote(if (activated) { cangjiePackageEnvironmentPath("HOME") + "/.hap/env.sh" } else { root + "/env.sh" })) + "\"}"
 }

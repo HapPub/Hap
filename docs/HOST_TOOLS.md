@@ -160,3 +160,23 @@ launch only records scheduling/process evidence; a person or a desktop test must
 confirm visibility, input and exit before `guiSessionVerified` can be asserted.
 The helper currently awaits real Windows desktop acceptance. It does not promise
 that two tasks can control one application window independently.
+
+## Path, failure and receipt behavior
+
+Managed SSH paths support spaces, Unicode, quotes and percent characters where
+allowed by the host filesystem. Both identity and known-hosts paths use quoted
+OpenSSH configuration values. Strict host verification remains enabled.
+
+A completed SSH command with exit 1–254 still proves authentication; the receipt
+records its `sessionExitCode` separately and the CLI exits nonzero. Exit 255 or a
+signal leaves authentication unknown (`null`), because the session may have
+failed before or after authentication. Enrollment alone never proves login.
+
+Host subprocess failures expose an allowlisted status, exit code, retryability
+and next action; arbitrary child stderr and command arguments are not echoed.
+Installer receipts expose `verificationLevel`, `declaredTargets` and
+`verifiedTargets`; a version smoke does not verify a target compiler stub.
+
+Lock `owner.json` records the process and creation time. Check that process has
+stopped before removing an interrupted lock. Private-root checks still reject
+user links/reparse points; macOS's fixed `/tmp` and `/var` aliases are normalized.

@@ -216,13 +216,20 @@ def ssh_pair(o):
             raise ValueError('pairing expired or attempt limit reached')
 
 
+def ssh_config_path(path):
+    # OpenSSH reparses -o values and expands percent tokens after argv parsing.
+    value = str(path)
+    require(not any(ord(c) < 32 for c in value), 'control character in SSH path')
+    return '"' + value.replace('\\', '\\\\').replace('"', '\\"').replace('%', '%%') + '"'
+
+
 def ssh_argv(root, peer):
     data=read_json(root/('client-'+peer+'.json'))
     user_name(data['user']);address(data['ip'])
     require(type(data['port']) is int and 1<=data['port']<=65535,'invalid saved port')
     key=safe_root(root/('key-'+peer));known=safe_root(root/('known-'+peer))
     require(key.is_file() and known.is_file(),'peer key or host identity missing')
-    return [ssh_tool('ssh'),'-F','NUL' if os.name=='nt' else '/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(known),'-o','GlobalKnownHostsFile='+('NUL' if os.name=='nt' else '/dev/null'),'-o','ForwardAgent=no','-o','ForwardX11=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=10','-i',str(key),'-p',str(data['port']),data['user']+'@'+data['ip']]
+    return [ssh_tool('ssh'),'-F','NUL' if os.name=='nt' else '/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+ssh_config_path(known),'-o','GlobalKnownHostsFile='+('NUL' if os.name=='nt' else '/dev/null'),'-o','ForwardAgent=no','-o','ForwardX11=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=10','-o','IdentityFile='+ssh_config_path(key),'-p',str(data['port']),data['user']+'@'+data['ip']]
 
 
 def connect(o):
@@ -259,7 +266,7 @@ def connect(o):
                 if o.save:atomic_json(root/('alias-'+o.save+'.json'),{'peerId':peer})
     if o.no_connect:return {'ok':True,'status':'paired','peerId':peer,'pairReady':True,'sshAuthenticated':False,'guiSessionVerified':False}
     code=subprocess.run(ssh_argv(root,peer)).returncode
-    return {'ok':code==0,'status':'session-ended' if code==0 else 'ssh-session-failed','peerId':peer,'exitCode':code,'sshAuthenticated':code==0,'guiSessionVerified':False}
+    return {'ok':code==0,'status':'session-ended' if code==0 else 'ssh-session-failed','peerId':peer,'exitCode':code,'sessionExitCode':code,'sshAuthenticated':True if 0<=code<255 else None,'authenticationObserved':True if 0<=code<255 else None,'guiSessionVerified':False}
 
 
 def ssh_main(args):

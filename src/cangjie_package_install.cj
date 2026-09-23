@@ -3,7 +3,7 @@ package hapcli
 import std.collection.ArrayList
 import std.convert.*
 import std.env.getVariable
-import std.fs.{Directory, File, exists}
+import std.fs.{Directory, File, exists, rename, removeIfExists}
 
 public class HapCangjiePackageInstallOptions {
     public var requestedSpec: String = ""
@@ -435,25 +435,39 @@ public func runCangjiePackageInstall(options: HapCangjiePackageInstallOptions): 
         return renderCangjiePackageInstallJson(options, asset, failed)
     }
     let result = installResolvedCangjiePackage(options, asset)
-    let json = renderCangjiePackageInstallJson(options, asset, result)
-    if (result.ok) {
-        try {
-            let receiptRoot = parentPath(options.receipt)
-            if (receiptRoot.size > 0 && !exists(receiptRoot)) {
-                Directory.create(receiptRoot, recursive: true)
-            }
-            File.writeTo(options.receipt, json.toArray())
-        } catch (error: Exception) {
-            result.ok = false
-            result.status = "receipt-write-failed"
-            result.diagnostic = error.message
-            return renderCangjiePackageInstallJson(options, asset, result)
-        }
-    }
-    json
+    renderCangjiePackageInstallJson(options, asset, result)
 }
 
 public func installResolvedCangjiePackage(options: HapCangjiePackageInstallOptions, asset: HapCangjiePackageInstallAsset): HapCangjiePackageInstallResult {
+    let failed = HapCangjiePackageInstallResult()
+    let finalRoot = cangjiePackageFinalRoot(options)
+    let lock = finalRoot + ".lock"
+    var locked = false
+    try {
+        sdkValidatePrivateRoot(finalRoot)
+        ensureCangjieToolchainDirectory(parentPath(finalRoot))
+        Directory.create(lock)
+        locked = true
+        writeHapInstallLockOwner(lock, "cangjie-component-install")
+        let result = installResolvedCangjiePackageLocked(options, asset)
+        if (result.ok && options.receipt.size > 0) {
+            ensureCangjieToolchainDirectory(parentPath(options.receipt))
+            let temporaryReceipt = lock + "/receipt.json"
+            File.writeTo(temporaryReceipt, renderCangjiePackageInstallJson(options, asset, result).toArray())
+            rename(temporaryReceipt, to: options.receipt, overwrite: true)
+        }
+        return result
+    } catch (error: Exception) {
+        failed.status = if (locked) { "install-transaction-failed" } else { "install-lock-or-root-unavailable" }
+        failed.finalRoot = finalRoot
+        failed.diagnostic = error.message
+        return failed
+    } finally {
+        if (locked) { removeIfExists(lock, recursive: true) }
+    }
+}
+
+func installResolvedCangjiePackageLocked(options: HapCangjiePackageInstallOptions, asset: HapCangjiePackageInstallAsset): HapCangjiePackageInstallResult {
     let result = HapCangjiePackageInstallResult()
     result.finalRoot = cangjiePackageFinalRoot(options)
     result.archivePath = cangjiePackageArchivePath(options, asset)
@@ -475,13 +489,15 @@ public func installResolvedCangjiePackage(options: HapCangjiePackageInstallOptio
         result.activationHint = cangjiePackageActivationHint(options, result.finalRoot, result.envsetupPath)
         return result
     }
+    if (exists(result.finalRoot)) {
+        result.status = "incomplete-install-preserved"
+        result.diagnostic = "Existing final directory has no matching completion marker; inspect or move it before retrying."
+        return result
+    }
     try {
         let downloadRoot = parentPath(result.archivePath)
         if (!exists(downloadRoot)) {
             Directory.create(downloadRoot, recursive: true)
-        }
-        if (!exists(result.finalRoot)) {
-            Directory.create(result.finalRoot, recursive: true)
         }
     } catch (error: Exception) {
         result.status = "install-root-create-failed"
@@ -503,27 +519,43 @@ public func installResolvedCangjiePackage(options: HapCangjiePackageInstallOptio
         return result
     }
     result.checksumVerified = true
-    let extract = extractCangjieBootstrapArchive(result.archivePath, result.finalRoot)
-    if (!extract.ran || extract.exitCode != 0) {
-        result.status = "extract-failed"
-        result.diagnostic = extract.stderr
+    let stage = result.finalRoot + ".staging"
+    if (exists(stage)) {
+        result.status = "interrupted-stage-preserved"
+        result.diagnostic = "Inspect or move the previous staging directory before retrying."
         return result
     }
-    result.installActionTaken = true
-    if (options.resolvedPackage == "cangjie-sdk") {
-        result.envsetupPath = findBootstrapEnvsetup(result.finalRoot)
-        if (result.envsetupPath.size == 0) {
-            result.status = "sdk-envsetup-not-found"
+    var ownsStage = false
+    try {
+        Directory.create(stage)
+        ownsStage = true
+        let extract = extractCangjieBootstrapArchive(result.archivePath, stage)
+        if (!extract.ran || extract.exitCode != 0) {
+            result.status = "extract-failed"
+            result.diagnostic = extract.stderr
             return result
         }
-    } else if (!exists(result.finalRoot + "/" + cangjiePlatformNameForTarget(options.target))) {
-        result.status = "stdx-platform-not-found"
-        return result
+        if (options.resolvedPackage == "cangjie-sdk") {
+            result.envsetupPath = findBootstrapEnvsetup(stage)
+            if (result.envsetupPath.size == 0) {
+                result.status = "sdk-envsetup-not-found"
+                return result
+            }
+            result.envsetupPath = result.finalRoot + substringFrom(result.envsetupPath, stage.size)
+        } else if (!exists(stage + "/" + cangjiePlatformNameForTarget(options.target))) {
+            result.status = "stdx-platform-not-found"
+            return result
+        }
+        writeBootstrapCompletionMarker(stage + "/.hap-complete", asset.version, asset.sha256)
+        rename(stage, to: result.finalRoot)
+        ownsStage = false
+        result.installActionTaken = true
+        result.ok = true
+        result.status = "verified-and-installed"
+        result.activationHint = cangjiePackageActivationHint(options, result.finalRoot, result.envsetupPath)
+    } finally {
+        if (ownsStage && exists(stage)) { removeIfExists(stage, recursive: true) }
     }
-    writeBootstrapCompletionMarker(marker, asset.version, asset.sha256)
-    result.ok = true
-    result.status = "verified-and-installed"
-    result.activationHint = cangjiePackageActivationHint(options, result.finalRoot, result.envsetupPath)
     result
 }
 
@@ -541,6 +573,7 @@ public func renderCangjiePackageInstallJson(options: HapCangjiePackageInstallOpt
     out.append("  \"schema\": \"happub-hapcli-cangjie-package-install-v1\",\n")
     out.append("  \"ok\": " + boolJson(result.ok) + ",\n")
     out.append("  \"status\": \"" + escapeJson(result.status) + "\",\n")
+    out.append("  \"verificationLevel\": \"" + (if (result.cacheHit) { "marker" } else if (result.checksumVerified) { "archive" } else { "none" }) + "\",\n")
     out.append("  \"plan\": " + boolJson(options.plan) + ",\n")
     out.append("  \"requestedSpec\": \"" + escapeJson(options.requestedSpec) + "\",\n")
     out.append("  \"requestedPackage\": \"" + escapeJson(options.requestedPackage) + "\",\n")

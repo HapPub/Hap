@@ -94,6 +94,7 @@ public func runCangjieToolchainGet(args: Array<String>): String {
         let (code, _, _) = executeWithOutput("mkdir", [lock])
         if (code != 0) { return renderInspectCjpmErrorJson("toolchain-install-busy", "another installation owns " + lock + "; if interrupted, remove this directory after checking no installer is running") }
         locked = true
+        writeHapInstallLockOwner(lock, "cangjie-toolchain-install")
         getStdErr().writeln("[1/3] Installing SDK " + sdk.resolvedVersion + " (download, SHA-256, extraction or verified cache)...")
         sdkJson = runCangjiePackageInstall(sdk)
         if (cangjiePackageInstallExitCode(sdkJson) != 0) {
@@ -221,8 +222,7 @@ func renderCangjieToolchainGetJson(options: HapCangjieToolchainGetOptions, statu
 }
 
 public func cangjieToolchainGetExitCode(output: String): Int64 {
-    let key = indexOfText(output, "\"ok\"")
-    if (key >= 0 && jsonBoolValueAfter(output, key) == "true") { 0 } else { 1 }
+    if (commandJsonOk(output) == "true") { 0 } else { 1 }
 }
 
 func ensureCangjieToolchainDirectory(path: String): Unit {

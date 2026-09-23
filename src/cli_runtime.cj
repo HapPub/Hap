@@ -28,8 +28,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let input = commandLine[2]
         let text = String.fromUtf8(File.readFrom(input))
-        println(renderCjpmProfileInspectJson(inspectCjpmProfileText(text, input)))
-        return 0
+        return emitHapJson(renderCjpmProfileInspectJson(inspectCjpmProfileText(text, input)))
     }
     if (command == "plan-switch") {
         if (commandLine.size <= 4) {
@@ -41,32 +40,28 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         let targetProfile = commandLine[4]
         let cjpmText = String.fromUtf8(File.readFrom(input))
         let profileText = String.fromUtf8(File.readFrom(profilePath))
-        println(renderCjpmProfileSwitchPlanJson(cjpmText, profileText, input, profilePath, targetProfile))
-        return 0
+        return emitHapJson(renderCjpmProfileSwitchPlanJson(cjpmText, profileText, input, profilePath, targetProfile))
     }
     if (command == "apply-switch") {
         if (commandLine.size <= 4) {
             println(renderInspectCjpmErrorJson("missing-input", "usage: hap apply-switch <cjpm.toml> <profiles.toml> <target-profile> --output=<path> --receipt=<path> --review-token=<token>"))
             return 2
         }
-        println(runCjpmProfileSwitchApply(commandLine))
-        return 0
+        return emitHapJson(runCjpmProfileSwitchApply(commandLine))
     }
     if (command == "record") {
         if (commandLine.size <= 2) {
             println(renderInspectCjpmErrorJson("missing-input", "usage: hap record [--target <target>] cangjie.stdx --project <path> [--config <path>] [--name <name>]"))
             return 2
         }
-        println(runRecord(commandLine, 2))
-        return 0
+        return emitHapJson(runRecord(commandLine, 2))
     }
     if (command == "doctorfix") {
         if (commandLine.size <= 2) {
             println(renderInspectCjpmErrorJson("missing-input", "usage: hap doctorfix [--target <target>] cangjie.stdx --project <path> [--config <path>] [--plan|--write]"))
             return 2
         }
-        println(runDoctorFix(commandLine, 2))
-        return 0
+        return emitHapJson(runDoctorFix(commandLine, 2))
     }
     if (command == "project") {
         if (commandLine.size <= 2) {
@@ -75,8 +70,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "detect") {
-            println(renderProjectDetectJson(resolveProjectDetectOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderProjectDetectJson(resolveProjectDetectOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-project-action", "unknown project action: " + action))
         return 2
@@ -109,8 +103,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
                 println(renderProjectActionPlanJson(options))
                 return 3
             }
-            println(renderProjectActionPlanJson(options))
-            return 0
+            return emitHapJson(renderProjectActionPlanJson(options))
         }
         let options = resolveBuildOptions(commandLine, 2)
         let output = renderBuildJson(options, true, true)
@@ -134,8 +127,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             println(renderProjectActionPlanJson(options))
             return 3
         }
-        println(renderProjectActionPlanJson(options))
-        return 0
+        return emitHapJson(renderProjectActionPlanJson(options))
     }
     if (command == "dev") {
         let deviceSetStart = hapDevDeviceSetStartIndex(commandLine)
@@ -146,8 +138,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let options = resolveProjectActionOptions("dev", commandLine, 2)
         if (options.plan) {
-            println(renderProjectActionPlanJson(options))
-            return 0
+            return emitHapJson(renderProjectActionPlanJson(options))
         }
         if (shouldUseKmpLocalDesktopDevExecution(options)) {
             let output = if (options.verbose) {
@@ -176,8 +167,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             return projectActionExecutionExitCodeFromJson(output)
         }
         if (!shouldUseHarmonyLocalDevExecution(options)) {
-            println(renderProjectActionPlanJson(options))
-            return 0
+            return emitHapJson(renderProjectActionPlanJson(options))
         }
         if (options.executeReviewed) {
             let output = runHarmonyReviewedExecution(options)
@@ -207,16 +197,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             println(renderProjectActionPlanJson(options))
             return 3
         }
-        println(renderProjectActionPlanJson(options))
-        return 0
+        return emitHapJson(renderProjectActionPlanJson(options))
     }
     if (command == "update") {
-        println(renderUpdatePlanJson(resolveUpdatePlanOptions("update", commandLine, 2)))
-        return 0
+        return emitHapJson(renderUpdatePlanJson(resolveUpdatePlanOptions("update", commandLine, 2)))
     }
     if (command == "upgrade") {
-        println(renderUpdatePlanJson(resolveUpdatePlanOptions("upgrade", commandLine, 2)))
-        return 0
+        return emitHapJson(renderUpdatePlanJson(resolveUpdatePlanOptions("upgrade", commandLine, 2)))
     }
     if (command == "harmony") {
         if (commandLine.size <= 2) {
@@ -225,16 +212,13 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "wireless-recipe") {
-            println(renderHarmonyWirelessRecipeJson(resolveHarmonyWirelessRecipeOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderHarmonyWirelessRecipeJson(resolveHarmonyWirelessRecipeOptions(commandLine, 3)))
         }
         if (action == "wireless-readback") {
-            println(renderHarmonyWirelessReadbackJson(resolveHarmonyWirelessReadbackOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderHarmonyWirelessReadbackJson(resolveHarmonyWirelessReadbackOptions(commandLine, 3)))
         }
         if (action == "device-status") {
-            println(renderHarmonyDeviceStatusJson(resolveHarmonyDeviceStatusOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderHarmonyDeviceStatusJson(resolveHarmonyDeviceStatusOptions(commandLine, 3)))
         }
         if (action == "device-memory") {
             if (commandLine.size <= 3) {
@@ -243,12 +227,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             }
             let memoryAction = commandLine[3]
             if (memoryAction == "promote") {
-                println(runHarmonyDeviceMemoryPromote(resolveHarmonyDeviceMemoryOptions("promote", commandLine, 4)))
-                return 0
+                return emitHapJson(runHarmonyDeviceMemoryPromote(resolveHarmonyDeviceMemoryOptions("promote", commandLine, 4)))
             }
             if (memoryAction == "readback") {
-                println(renderHarmonyDeviceMemoryReadbackJson(resolveHarmonyDeviceMemoryOptions("readback", commandLine, 4)))
-                return 0
+                return emitHapJson(renderHarmonyDeviceMemoryReadbackJson(resolveHarmonyDeviceMemoryOptions("readback", commandLine, 4)))
             }
             println(renderInspectCjpmErrorJson("unknown-harmony-device-memory-action", "unknown harmony device-memory action: " + memoryAction))
             return 2
@@ -263,12 +245,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let subject = commandLine[2]
         if (subject == "stdx") {
-            println(renderStdxDoctorJson(resolveDoctorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderStdxDoctorJson(resolveDoctorOptions(commandLine, 3)))
         }
         if (subject == "runtime") {
-            println(renderRuntimeDoctorJson(resolveDoctorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderRuntimeDoctorJson(resolveDoctorOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-doctor", "unknown doctor subject: " + subject))
         return 2
@@ -281,40 +261,31 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         let subject = commandLine[2]
         let action = commandLine[3]
         if (subject == "pipeline" && action == "plan") {
-            println(renderCjpmPipelinePlanJson(resolveCjpmPipelinePlanOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmPipelinePlanJson(resolveCjpmPipelinePlanOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "doctor") {
-            println(renderCjpmGraphDoctorJson(resolveGraphOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmGraphDoctorJson(resolveGraphOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "discover-manifests") {
-            println(renderCjpmGraphDiscoverManifestsJson(resolveGraphOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmGraphDiscoverManifestsJson(resolveGraphOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "manifest-list-export") {
-            println(runCjpmGraphManifestListExport(commandLine, 4))
-            return 0
+            return emitHapJson(runCjpmGraphManifestListExport(commandLine, 4))
         }
         if (subject == "graph" && action == "manifest-list-readback") {
-            println(renderCjpmGraphManifestListReadbackJson(resolveGraphOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmGraphManifestListReadbackJson(resolveGraphOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "normalize-plan") {
-            println(renderCjpmGraphNormalizePlanJson(resolveGraphOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmGraphNormalizePlanJson(resolveGraphOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "apply-normalize") {
-            println(runCjpmGraphNormalizeApply(commandLine, 4))
-            return 0
+            return emitHapJson(runCjpmGraphNormalizeApply(commandLine, 4))
         }
         if (subject == "graph" && action == "ci-preflight-recipe") {
-            println(renderCjpmGraphCiPreflightRecipeJson(resolveGraphOptions(commandLine, 4)))
-            return 0
+            return emitHapJson(renderCjpmGraphCiPreflightRecipeJson(resolveGraphOptions(commandLine, 4)))
         }
         if (subject == "graph" && action == "ci-workflow-export") {
-            println(runCjpmGraphCiWorkflowExport(commandLine, 4))
-            return 0
+            return emitHapJson(runCjpmGraphCiWorkflowExport(commandLine, 4))
         }
         println(renderInspectCjpmErrorJson("unknown-cjpm-subcommand", "unknown cjpm subcommand: " + subject + " " + action))
         return 2
@@ -326,32 +297,25 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "action-doctor") {
-            println(renderCiActionDoctorJson(resolveCiActionDoctorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiActionDoctorJson(resolveCiActionDoctorOptions(commandLine, 3)))
         }
         if (action == "bootstrap-snippet") {
-            println(renderCiBootstrapSnippetJson(resolveCiBootstrapOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiBootstrapSnippetJson(resolveCiBootstrapOptions(commandLine, 3)))
         }
         if (action == "bootstrap-packet") {
-            println(renderCiBootstrapPacketJson(resolveCiBootstrapPacketOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiBootstrapPacketJson(resolveCiBootstrapPacketOptions(commandLine, 3)))
         }
         if (action == "project-bridge-recipe") {
-            println(renderCiProjectBridgeRecipeJson(resolveCiProjectBridgeOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiProjectBridgeRecipeJson(resolveCiProjectBridgeOptions(commandLine, 3)))
         }
         if (action == "executor-recipe") {
-            println(renderCiExecutorRecipeJson(resolveCiExecutorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiExecutorRecipeJson(resolveCiExecutorOptions(commandLine, 3)))
         }
         if (action == "executor-snippet") {
-            println(renderCiExecutorSnippetJson(resolveCiExecutorSnippetOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiExecutorSnippetJson(resolveCiExecutorSnippetOptions(commandLine, 3)))
         }
         if (action == "hosted-proof-pack") {
-            println(renderCiHostedProofPackJson(resolveCiHostedProofPackOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCiHostedProofPackJson(resolveCiHostedProofPackOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-ci-action", "unknown ci action: " + action))
         return 2
@@ -374,20 +338,16 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             return cangjiePackageInstallExitCode(output)
         }
         if (action == "doctor") {
-            println(renderInstallDoctorJson(resolveInstallDoctorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderInstallDoctorJson(resolveInstallDoctorOptions(commandLine, 3)))
         }
         if (action == "replace-plan") {
-            println(renderInstallReplacePlanJson(resolveInstallReplacePlanOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderInstallReplacePlanJson(resolveInstallReplacePlanOptions(commandLine, 3)))
         }
         if (action == "restore-plan") {
-            println(renderInstallRestorePlanJson(resolveInstallRestorePlanOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderInstallRestorePlanJson(resolveInstallRestorePlanOptions(commandLine, 3)))
         }
         if (action == "receipt-readback") {
-            println(renderInstallReceiptReadbackJson(resolveInstallReceiptReadbackOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderInstallReceiptReadbackJson(resolveInstallReceiptReadbackOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-install-action", "unknown install action: " + action))
         return 2
@@ -399,8 +359,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "manifest") {
-            println(renderReleaseManifestJson(resolveReleaseManifestOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderReleaseManifestJson(resolveReleaseManifestOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-release-action", "unknown release action: " + action))
         return 2
@@ -412,12 +371,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "providers") {
-            println(renderToolchainProvidersJson())
-            return 0
+            return emitHapJson(renderToolchainProvidersJson())
         }
         if (action == "doctor") {
-            println(renderToolchainDoctorJson(resolveToolchainDoctorOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderToolchainDoctorJson(resolveToolchainDoctorOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-toolchain-action", "unknown toolchain action: " + action))
         return 2
@@ -429,12 +386,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "print") {
-            println(renderEnvPrintJson(resolveEnvPrintOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderEnvPrintJson(resolveEnvPrintOptions(commandLine, 3)))
         }
         if (action == "apply") {
-            println(runEnvApply(commandLine, 3))
-            return 0
+            return emitHapJson(runEnvApply(commandLine, 3))
         }
         println(renderInspectCjpmErrorJson("unknown-env-action", "unknown env action: " + action))
         return 2
@@ -446,47 +401,37 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "doctor") {
-            println(renderCjpmGraphDoctorJson(resolveGraphOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCjpmGraphDoctorJson(resolveGraphOptions(commandLine, 3)))
         }
         if (action == "discover-manifests") {
-            println(renderCjpmGraphDiscoverManifestsJson(resolveGraphOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCjpmGraphDiscoverManifestsJson(resolveGraphOptions(commandLine, 3)))
         }
         if (action == "manifest-list-export") {
-            println(runCjpmGraphManifestListExport(commandLine, 3))
-            return 0
+            return emitHapJson(runCjpmGraphManifestListExport(commandLine, 3))
         }
         if (action == "manifest-list-readback") {
-            println(renderCjpmGraphManifestListReadbackJson(resolveGraphOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCjpmGraphManifestListReadbackJson(resolveGraphOptions(commandLine, 3)))
         }
         if (action == "normalize-plan") {
-            println(renderCjpmGraphNormalizePlanJson(resolveGraphOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCjpmGraphNormalizePlanJson(resolveGraphOptions(commandLine, 3)))
         }
         if (action == "apply-normalize") {
-            println(runCjpmGraphNormalizeApply(commandLine, 3))
-            return 0
+            return emitHapJson(runCjpmGraphNormalizeApply(commandLine, 3))
         }
         if (action == "ci-preflight-recipe") {
-            println(renderCjpmGraphCiPreflightRecipeJson(resolveGraphOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCjpmGraphCiPreflightRecipeJson(resolveGraphOptions(commandLine, 3)))
         }
         if (action == "ci-workflow-export") {
-            println(runCjpmGraphCiWorkflowExport(commandLine, 3))
-            return 0
+            return emitHapJson(runCjpmGraphCiWorkflowExport(commandLine, 3))
         }
         println(renderInspectCjpmErrorJson("unknown-graph-action", "unknown graph action: " + action))
         return 2
     }
     if (command == "stdx-doctor") {
-        println(renderStdxDoctorJson(resolveDoctorOptions(commandLine, 2)))
-        return 0
+        return emitHapJson(renderStdxDoctorJson(resolveDoctorOptions(commandLine, 2)))
     }
     if (command == "runtime-doctor") {
-        println(renderRuntimeDoctorJson(resolveDoctorOptions(commandLine, 2)))
-        return 0
+        return emitHapJson(renderRuntimeDoctorJson(resolveDoctorOptions(commandLine, 2)))
     }
     if (command == "get") {
         if (commandLine.size <= 2) {
@@ -505,12 +450,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             return cangjieToolchainGetExitCode(output)
         }
         if (subject == "cangjie-stdx") {
-            println(renderCangjieStdxGetPlanJson(resolveCangjieStdxGetOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCangjieStdxGetPlanJson(resolveCangjieStdxGetOptions(commandLine, 3)))
         }
         if (subject == "cangjie-sdk") {
-            println(renderCangjieSdkGetPlanJson(resolveCangjieSdkGetOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderCangjieSdkGetPlanJson(resolveCangjieSdkGetOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-get-subject", "unknown get subject: " + subject))
         return 2
@@ -522,8 +465,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "reviewed-recipe") {
-            println(renderReviewedFetchRecipeJson(resolveReviewedFetchOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderReviewedFetchRecipeJson(resolveReviewedFetchOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-fetch-action", "unknown fetch action: " + action))
         return 2
@@ -535,8 +477,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let subject = commandLine[2]
         if (subject == "runtime") {
-            println(renderRuntimeHandoffJson(resolveRuntimeHandoffOptions(commandLine, 3)))
-            return 0
+            return emitHapJson(renderRuntimeHandoffJson(resolveRuntimeHandoffOptions(commandLine, 3)))
         }
         println(renderInspectCjpmErrorJson("unknown-handoff-subject", "unknown handoff subject: " + subject))
         return 2
@@ -548,8 +489,7 @@ public func runHapCli(commandLine: Array<String>): Int64 {
         }
         let action = commandLine[2]
         if (action == "refresh") {
-            println(runDictionaryRefresh(commandLine, 3))
-            return 0
+            return emitHapJson(runDictionaryRefresh(commandLine, 3))
         }
         println(renderInspectCjpmErrorJson("unknown-dictionary-action", "unknown dictionary action: " + action))
         return 2

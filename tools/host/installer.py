@@ -58,7 +58,7 @@ def validate_engine(root, engine, version='', native=True):
                            [str(root / entry), '-NOCONFIG', '-VERSION'] if engine == 'nsis' else [str(root / entry), '--version'], env=env)
         require(re.search(r'(?<![\d.])v?' + re.escape(m['version']) + r'(?![\d.])', observed), 'compiler reported different version')
     return {'schema':'happub-installer-receipt-v1', 'ok':True, 'engine':engine, 'version':m['version'],
-            'host':m['host'], 'targetArchitectures':['x86','x64'], 'bundleRoot':str(root), 'entry':str(root / entry),
+            'host':m['host'], 'targetArchitectures':[], 'declaredTargets':m.get('targetArchitectures', []), 'verifiedTargets':[], 'verificationLevel':'inventory+native-probe' if native else 'inventory', 'bundleRoot':str(root), 'entry':str(root / entry),
             'manifestSha256':digest(root / 'engine.json'), 'inventoryVerified':True, 'nativeToolsVerified':native,
             'observedVersion':observed, 'honorVerified':False, 'windowsExecutionVerified':False}
 
@@ -138,7 +138,7 @@ def installer_main(args):
             if o.archive:
                 origin=Path(o.archive); require(no_link(origin).st_size<=MAX_BYTES,'archive too large'); shutil.copyfile(origin,archive)
             else:
-                command(['curl','--disable','--proto','=https','--proto-redir','=https','--fail','--location','--silent','--show-error','--connect-timeout','10','--max-time','900','--max-filesize',str(MAX_BYTES),'--output',str(archive),o.url],timeout=920)
+                command(['curl','--disable','--proto','=https','--proto-redir','=https','--fail','--location','--silent','--show-error','--connect-timeout','10','--max-time','900','--speed-limit','16384','--speed-time','15','--max-filesize',str(MAX_BYTES),'--output',str(archive),o.url],timeout=920)
             require(digest(archive)==o.sha256,'archive SHA-256 mismatch')
             extract_engine(archive,stage/'bundle'); archive.unlink()
             r=validate_engine(stage/'bundle',o.engine,o.version)

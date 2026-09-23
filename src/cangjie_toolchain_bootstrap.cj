@@ -401,11 +401,7 @@ func downloadCangjieBootstrapFile(
             last = HapBuildCommandResult(2, "", "refusing non-HTTPS bootstrap candidate")
             continue
         }
-        let args = [
-            "--proto", "=https", "--tlsv1.2", "--location", "--fail", "--show-error", "--silent",
-            "--connect-timeout", timeoutSeconds.toString(), "--max-time", timeoutSeconds.toString(),
-            "--retry", retryCount.toString(), "--retry-delay", "2", "--output", outputPath, candidate
-        ]
+        let args = hapHttpsDownloadArgs(candidate, outputPath, timeoutSeconds, retryCount)
         let command = resolveHapNetworkCommand(networkMode, "curl", args)
         let (code, stdoutBytes, stderrBytes) = executeWithOutput(command.program, command.args.toArray())
         last = HapBuildCommandResult(code, if (code == 0) { candidate } else { String.fromUtf8(stdoutBytes) }, String.fromUtf8(stderrBytes))

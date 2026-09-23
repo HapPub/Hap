@@ -29,6 +29,8 @@ executes a bounded set of fixed tool adapters, and records structured results.
 
 See the [capability matrix](docs/CAPABILITIES.md) for implementation status, verified hosts and known limitations. Host-tool commands require Python 3.11+; SSH pairing also requires OpenSSH and OpenSSL.
 
+Reliability updates on this branch fix SSH paths containing spaces, map failed command results to nonzero exits, and stage Cangjie component installs before publication. See the capability matrix for verification boundaries.
+
 ## Quick Start
 
 This README describes **source version 0.3.0**. Downloadable versions and host

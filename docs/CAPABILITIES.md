@@ -1,6 +1,7 @@
 # Capability matrix
 
-This matrix describes source revision `98d305c` (2026-09-23). A supported command,
+This matrix describes the `feat/audit-remediation` source branch (2026-09-23),
+based on revision `98d305c`. A supported command,
 a successful build, a real installation and a device acceptance test are different
 results. Check the [release assets](https://github.com/HapPub/Hap/releases) for the
 version and host you intend to install.
@@ -63,33 +64,38 @@ See [SDK/JDK installation](SDK_TOOLCHAINS.md), [host tools](HOST_TOOLS.md) and
 Host-tool commands require **Python 3.11+**. Pairing also requires **OpenSSH and
 OpenSSL**. Keys remain authorized until revoked; code expiry does not revoke
 existing keys or terminate sessions. Use `--code-stdin` to avoid shell-history
-exposure. A known limitation in this revision prevents SSH connections when the
-managed known-hosts path contains spaces. A path without spaces is required until
-the option-quoting fix lands. Windows domain-style and non-ASCII account names are
+exposure. SSH key and known-hosts paths are quoted for OpenSSH, including spaces, Unicode
+and percent tokens; real macOS loopback sessions cover these paths. Windows domain-style and non-ASCII account names are
 not accepted by the current username validator.
 
 ## Verification boundaries
 
 - The host-tools workflow builds/tests on Windows x64, Linux x64 and macOS ARM64.
-  Windows checks client reuse, plans, diagnostics and desktop-script parsing;
-  it does not run the pairing or interactive-desktop acceptance scenarios.
-- The Cangjie suite has 232 passing cases at this revision. The separate host-tool
+  All native jobs now run command contracts and isolated installer/TLS enrollment
+  tests, with Windows coverage pending the updated workflow result. Real SSH
+  sessions remain macOS-only; interactive desktop acceptance remains separate.
+- The Cangjie suite has 233 passing cases on macOS after the test-file split. The separate host-tool
   suite has 28 public-command checks on macOS/Linux. These are different suites.
 - Successful compilation is not proof of host installation, target execution,
   signing, interactive desktop visibility or user acceptance.
-- Some legacy commands can emit `ok=false` while returning process exit code 0.
-  Until their exit contract is unified, automation must inspect the structured
-  result as well as the exit code.
-- For prepared engine packs, paths containing symlink/reparse ancestors are
-  rejected, including macOS `/tmp` and `/var` aliases. Use their canonical paths.
+- Legacy JSON handlers now map top-level `ok=false` to a nonzero exit code;
+  nested component success cannot override the command result. Reports without
+  an `ok` field retain their previous exit behavior.
+- Cangjie component installation uses a per-package lock and staging directory.
+  A complete archive is verified before publication; incomplete existing installs
+  and interrupted stages are preserved for inspection instead of overwritten.
+- Receipts distinguish `marker`, `archive`, `native-probe` and `inventory`
+  verification. Engine target declarations do not imply compiled target proof.
+- Private roots reject user symlink/reparse ancestors. The fixed macOS `/tmp`
+  and `/var` system aliases are normalized before these checks.
 
 ## Source map
 
 | Area | Owning source |
 | --- | --- |
-| Command routing | [cli_runtime.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/cli_runtime.cj) |
-| Cangjie components and activation | [cangjie_package_install.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/cangjie_package_install.cj), [cangjie_toolchain_get.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/cangjie_toolchain_get.cj) |
-| SDK/JDK providers | [sdk_toolchain_get.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/sdk_toolchain_get.cj), [sdk_toolchain_catalog.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/sdk_toolchain_catalog.cj) |
-| Installer / SSH bridge | [host_tools.cj](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/src/host_tools.cj), [reviewable helpers](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/tools/host) |
-| Windows desktop helper | [desktop-session.ps1](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/tools/windows/desktop-session.ps1) |
-| Host acceptance | [host-tools.yml](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/.github/workflows/host-tools.yml), [ssh-session.py](https://github.com/HapPub/Hap/blob/98d305c188448956848bc92b44020313b9706874/tests/ssh-session.py) |
+| Command routing | [cli_runtime.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/cli_runtime.cj) |
+| Cangjie components and activation | [cangjie_package_install.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/cangjie_package_install.cj), [cangjie_toolchain_get.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/cangjie_toolchain_get.cj) |
+| SDK/JDK providers | [sdk_toolchain_get.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/sdk_toolchain_get.cj), [sdk_toolchain_catalog.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/sdk_toolchain_catalog.cj) |
+| Installer / SSH bridge | [host_tools.cj](https://github.com/HapPub/Hap/blob/feat/audit-remediation/src/host_tools.cj), [reviewable helpers](https://github.com/HapPub/Hap/blob/feat/audit-remediation/tools/host) |
+| Windows desktop helper | [desktop-session.ps1](https://github.com/HapPub/Hap/blob/feat/audit-remediation/tools/windows/desktop-session.ps1) |
+| Host acceptance | [host-tools.yml](https://github.com/HapPub/Hap/blob/feat/audit-remediation/.github/workflows/host-tools.yml), [ssh-session.py](https://github.com/HapPub/Hap/blob/feat/audit-remediation/tests/ssh-session.py) |

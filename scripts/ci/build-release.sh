@@ -117,6 +117,8 @@ fi
   printf 'release binary is missing: %s\n' "$binary" >&2
   exit 1
 }
+run_logged_phase host-contracts python3 tests/host-contracts.py "$binary"
+run_logged_phase host-tools python3 tests/host-tools.py "$binary"
 if [[ "$target" != windows-amd64 ]]; then
   run_logged_phase toolchain-get python3 tests/cangjie-toolchain-get.py "$binary"
   run_logged_phase sdk-toolchain-get python3 tests/sdk-toolchain-get.py "$binary"

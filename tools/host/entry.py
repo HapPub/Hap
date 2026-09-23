@@ -7,6 +7,9 @@ try:
     elif args[:1]==['ssh']:result=ssh_main(args[1:])
     else:raise ValueError('unknown host command')
     emit(**result);sys.exit(0 if result.get('ok') else 2)
+except HostCommandError as error:
+    emit(ok=False,status=error.status,detail=str(error),program=error.program,exitCode=error.code,
+         retryable=error.retryable,nextAction=error.next_action);sys.exit(2)
 except (ValueError,OSError,KeyError,TypeError,subprocess.SubprocessError) as error:
     # Wire paths catch and sanitize their own errors. Do not echo argv or code.
     emit(ok=False,status='host-operation-failed',detail=str(error)[:500]);sys.exit(2)

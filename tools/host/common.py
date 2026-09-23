@@ -36,9 +36,38 @@ def digest(path):
     return h.hexdigest()
 
 
+class HostCommandError(ValueError):
+    def __init__(self, program, code, status='command-failed'):
+        self.status = status
+        self.program = Path(str(program)).name
+        self.code = code
+        self.retryable = status in ('command-timeout', 'port-in-use')
+        self.next_action = {
+            'maintenance-window-required': 'Inspect the existing service and arrange an explicit maintenance window.',
+            'existing-service-stopped': 'Inspect the service configuration and dependencies before repair.',
+            'port-in-use': 'Select an unused port or inspect the existing listener.',
+            'selected-interface-is-not-private': 'Select an interface on an existing private network.',
+            'needs-restart': 'Restart the host when convenient, then retry.',
+            'command-timeout': 'Inspect tool health and connectivity before retrying.',
+        }.get(status, 'Run hap ssh doctor and inspect the selected tool locally.')
+        super().__init__(self.program + ' failed (' + status + ', exit ' + str(code) + ')')
+
+
 def command(argv, timeout=30, input=None, env=None):
-    p = subprocess.run([str(x) for x in argv], input=input, capture_output=True, timeout=timeout, env=env)
-    require(p.returncode == 0, Path(argv[0]).name + ' failed (exit ' + str(p.returncode) + ')')
+    try:
+        p = subprocess.run([str(x) for x in argv], input=input, capture_output=True, timeout=timeout, env=env)
+    except subprocess.TimeoutExpired:
+        raise HostCommandError(argv[0], None, 'command-timeout') from None
+    if p.returncode:
+        # Extract only fixed diagnostic codes. Never echo argv, wire data or raw stderr.
+        known = ('maintenance-window-required', 'existing-service-stopped', 'port-in-use',
+                 'selected-interface-is-not-private', 'needs-restart', 'existing-client-unhealthy',
+                 'client-verification-failed', 'server-directory-acl-failed', 'host-key-generation-failed',
+                 'sshd-config-or-dependency-failed', 'service-start-failed', 'existing-server-data',
+                 'component-service-inconsistent', 'existing-firewall-rule')
+        detail = p.stderr.decode('utf-8', 'replace')[:8192]
+        status = next((x for x in known if re.search(r'(?<![a-z-])'+re.escape(x)+r'(?![a-z-])', detail)), 'command-failed')
+        raise HostCommandError(argv[0], p.returncode, status)
     return p.stdout.decode('utf-8', 'replace').strip()
 
 
@@ -55,6 +84,14 @@ def no_link(path):
 
 def safe_root(path):
     path = Path(path).expanduser().absolute()
+    # These OS-owned aliases are fixed Darwin paths, not arbitrary user links.
+    if sys.platform == 'darwin':
+        for alias, target in (('/tmp', '/private/tmp'), ('/var', '/private/var')):
+            prefix = Path(alias)
+            if path == prefix or prefix in path.parents:
+                require(prefix.is_symlink() and str(prefix.resolve()) == target, 'unexpected system path alias')
+                path = Path(target) / path.relative_to(prefix)
+                break
     cur = path
     while True:
         if cur.exists() or cur.is_symlink():
@@ -95,10 +132,17 @@ def atomic_json(path, data):
 @contextlib.contextmanager
 def lock(root, name):
     path = root / name
-    path.mkdir(mode=0o700)
     try:
+        path.mkdir(mode=0o700)
+    except FileExistsError:
+        raise ValueError('install-lock-busy: inspect owner.json; never remove a lock until its owner has stopped') from None
+    owner = path / 'owner.json'
+    try:
+        atomic_json(owner, {'pid': os.getpid(), 'host': platform.node(), 'createdAt': time.time(),
+                            'recovery': 'Confirm the owning process has stopped before removing this lock.'})
         yield
     finally:
+        owner.unlink(missing_ok=True)
         path.rmdir()
 
 

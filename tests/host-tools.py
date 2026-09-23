@@ -41,7 +41,14 @@ with tempfile.TemporaryDirectory(prefix='hap-host-tests-') as td:
     pack=root/'pack';pack.mkdir()
     for name in ['COPYING','Stubs/x','Include/x','Contrib/x','Plugins/x']:
         p=pack/name;p.parent.mkdir(exist_ok=True,parents=True);p.write_text('fixture')
-    exe=pack/'makensis';exe.write_text('#!/bin/sh\nprintf v3.12\n');exe.chmod(0o755)
+    exe=pack/('makensis.exe' if os.name=='nt' else 'makensis')
+    if os.name=='nt':
+        compiler_env=dict(env,HAP_TEST_COMPILER=str(exe))
+        subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-Command',
+            'Add-Type -TypeDefinition \'public class Entry { public static void Main() { System.Console.Write("v3.12"); } }\' -OutputAssembly $env:HAP_TEST_COMPILER -OutputType ConsoleApplication'],
+            env=compiler_env,check=True,capture_output=True)
+    else:
+        exe.write_text('#!/bin/sh\nprintf v3.12\n');exe.chmod(0o755)
     import platform
     host={'Darwin':'darwin','Linux':'linux','Windows':'win32'}[platform.system()]+'-'+{'aarch64':'arm64','amd64':'x86_64'}.get(platform.machine().lower(),platform.machine().lower())
     def seal():
@@ -55,6 +62,7 @@ with tempfile.TemporaryDirectory(prefix='hap-host-tests-') as td:
     seal();archive_path,sha=archive();install=root/'中文 空格'/'engines'
     args=['get','nsis','--version','3.12','--archive',str(archive_path),'--sha256',sha,'--install-root',str(install)]
     r=call(args,env);assert r['inventoryVerified'] and not r['cacheHit']
+    assert r['verifiedTargets']==[] and r['declaredTargets']==[] and r['verificationLevel']=='inventory+native-probe'
     r2=call(['get','nsis','--version','3.12','--sha256',sha,'--install-root',str(install),'--offline'],env);assert r2['cacheHit']
     call(['installer','inspect','--engine','nsis','--bundle',r['bundleRoot']],env)
     call(['installer','inspect','--engine','nsis','--bundle',r['bundleRoot'],'--version','3.1'],env,False)
@@ -74,11 +82,12 @@ with tempfile.TemporaryDirectory(prefix='hap-host-tests-') as td:
     # Real TLS and SSH signatures with independent local homes. No system service changes.
     serverhome=root/'server';clienthome=root/'client'
     for h in [serverhome,clienthome]:h.mkdir(mode=0o700)
-    se=dict(env,HOME=str(serverhome),USERPROFILE=str(serverhome));ce=dict(env,HOME=str(clienthome),USERPROFILE=str(clienthome))
+    se=dict(env,HOME=str(serverhome),USERPROFILE=str(serverhome),ProgramData=str(serverhome/'programdata'));ce=dict(env,HOME=str(clienthome),USERPROFILE=str(clienthome))
+    privileged=['--allow-privileged'] if os.name=='nt' else []
     key=root/'hostkey'
     subprocess.run(['ssh-keygen','-q','-t','ed25519','-N','','-f',str(key)],check=True)
     pair_port=port()
-    server=subprocess.Popen([binary,'ssh','--pair','--listen','127.0.0.1','--pair-port',str(pair_port),'--host-key',str(key)+'.pub','--show-code','--preauthorize','--ttl','30'],env=se,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
+    server=subprocess.Popen([binary,'ssh','--pair','--listen','127.0.0.1','--pair-port',str(pair_port),'--host-key',str(key)+'.pub','--show-code','--preauthorize','--ttl','30',*privileged],env=se,stdout=subprocess.PIPE,stderr=subprocess.PIPE,text=True)
     try:
         first=json.loads(server.stdout.readline());assert first['status']=='pairing-listening',first
         code=first['code']
@@ -116,7 +125,7 @@ with tempfile.TemporaryDirectory(prefix='hap-host-tests-') as td:
         rest=server.communicate(timeout=15);assert server.returncode==0,rest
         assert code not in rest[0]+rest[1] and data['secret'] not in rest[0]+rest[1]
         call(['ssh','conn','--code-stdin','--no-connect'],ce,False,input=code+'\n')
-        peer=paired['peerId'];auth=serverhome/'.ssh'/'authorized_keys';before=auth.read_text();assert 'hap-'+peer in before
+        peer=paired['peerId'];auth=serverhome/'programdata/ssh/administrators_authorized_keys' if os.name=='nt' else serverhome/'.ssh/authorized_keys';before=auth.read_text();assert 'hap-'+peer in before
         # Preserve an unrelated key while removing exact peer authorization.
         with auth.open('a') as f:f.write('# keep unrelated authorization\n# '+before.split('ssh-ed25519 ')[1].split()[0]+'\n')
         revoked=call(['ssh','revoke',peer],se);assert revoked['serverKeyRemoved']

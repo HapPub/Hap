@@ -73,16 +73,24 @@ component/service setup and the optional scheduled desktop task use fixed
 PowerShell adapters. A successful build does not verify an interactive desktop.
 See [host tools](HOST_TOOLS.md) for prerequisites and maintenance limits.
 
-### Shared contracts still to converge
+### Shared contracts and remaining convergence
 
-The bootstrap, Cangjie component installer, SDK/JDK installer and Python engine
-installer currently have separate download, cache and transaction policies.
-Component installation extracts into its final directory; its standalone entry
-does not yet have the staging/lock guarantees of the SDK and engine installers.
-Activation preserves the previous selection on failure, but that must not be
-described as universal installation rollback. Some older command handlers also
-return exit code 0 for a failed structured result. The [capability matrix](CAPABILITIES.md)
-records these limits and the evidence available for each host.
+The Cangjie component and SDK/JDK installers share HTTPS transfer defaults;
+bootstrap remains independently executable. Transport selection never changes
+checksum authority. Receipts name verification levels instead of treating a
+completion marker, a native smoke and a complete inventory as equivalent.
+
+Component installation now has a per-package lock, owned staging directory,
+verified publication and atomic receipt replacement. Incomplete prior roots and
+stages are preserved for inspection. SDK/JDK and Python engines retain their
+platform-specific adapters. Locks record their owner or operation; interrupted
+locks require inspection, not automatic deletion of potentially active work.
+
+Legacy JSON command handlers use one outcome boundary which reads the top-level
+result and preserves nested component evidence. New handlers can carry an
+immutable `HapCommandOutcome`; gradual internal result typing remains separate
+from the public JSON contract. The [capability matrix](CAPABILITIES.md) records
+remaining platform and recovery limits.
 
 ### Local private state
 

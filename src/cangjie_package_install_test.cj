@@ -1,7 +1,7 @@
 package hapcli
 
 import std.collection.ArrayList
-import std.fs.{Directory, File, exists}
+import std.fs.{Directory, File, exists, removeIfExists}
 import std.process.executeWithOutput
 import std.unittest.*
 import std.unittest.testmacro.*
@@ -222,12 +222,8 @@ public class HapCangjiePackageInstallTest {
         options.installRoot = installRoot
         options.receipt = fixture + "/receipt.json"
 
-        // Keep this transaction replayable even when a previous focused test left
-        // a valid final tree behind: a stale marker must force the verified
-        // archive path to run again before the cache-hit assertion below.
-        let finalRoot = installRoot + "/cangjie/cangjie-sdk/fixture/macos-arm64"
-        createDirForTest(finalRoot)
-        File.writeTo(finalRoot + "/.hap-complete", "stale\n".toArray())
+        let finalRoot = cangjiePackageFinalRoot(options)
+        if (exists(finalRoot)) { removeIfExists(finalRoot, recursive: true) }
 
         let rejectedAsset = HapCangjiePackageInstallAsset()
         rejectedAsset.valid = true
@@ -249,6 +245,36 @@ public class HapCangjiePackageInstallTest {
         asset.url = "file://" + archive
         asset.mirrorUrl = "file://" + archive
         asset.sha256 = exactSha
+        createDirForTest(finalRoot)
+        File.writeTo(finalRoot + "/sentinel", "preserve".toArray())
+        let incomplete = installResolvedCangjiePackage(options, asset)
+        @Assert(incomplete.status, "incomplete-install-preserved")
+        @Assert(exists(finalRoot + "/sentinel"), true)
+        removeIfExists(finalRoot, recursive: true)
+        createDirForTest(finalRoot + ".lock")
+        @Assert(installResolvedCangjiePackage(options, asset).ok, false)
+        @Assert(exists(finalRoot + ".lock"), true)
+        removeIfExists(finalRoot + ".lock", recursive: true)
+        let incompletePayload = fixture + "/incomplete-payload"
+        createDirForTest(incompletePayload)
+        File.writeTo(incompletePayload + "/not-an-sdk", "fixture".toArray())
+        let incompleteArchive = fixture + "/incomplete-sdk.tar.gz"
+        let (badTarCode, _, _) = executeWithOutput("tar", ["-czf", incompleteArchive, "-C", incompletePayload, "not-an-sdk"])
+        @Assert(badTarCode, Int64(0))
+        let savedUrl = asset.url
+        let savedMirror = asset.mirrorUrl
+        let savedSha = asset.sha256
+        asset.url = "file://" + incompleteArchive
+        asset.mirrorUrl = asset.url
+        asset.sha256 = hapPrntFileSha256(incompleteArchive)
+        let incompleteSdk = installResolvedCangjiePackage(options, asset)
+        @Assert(incompleteSdk.status, "sdk-envsetup-not-found")
+        @Assert(exists(finalRoot), false)
+        @Assert(exists(finalRoot + ".staging"), false)
+        @Assert(exists(finalRoot + ".lock"), false)
+        asset.url = savedUrl
+        asset.mirrorUrl = savedMirror
+        asset.sha256 = savedSha
         let installed = installResolvedCangjiePackage(options, asset)
         @Assert(installed.diagnostic, "")
         @Assert(installed.status, "verified-and-installed")

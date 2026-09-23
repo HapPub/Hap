@@ -7,10 +7,10 @@ binary=str(Path(sys.argv[1]).resolve())
 def port():
  with socket.socket() as s:s.bind(('127.0.0.1',0));return s.getsockname()[1]
 def run(args,env,input=None):
- p=subprocess.run([binary,*args],env=env,input=input,capture_output=True,text=True,timeout=30)
+ p=subprocess.run([binary,*args],env=env,input=input,capture_output=True,text=True,errors="replace",timeout=30)
  assert p.returncode==0,(p.stdout,p.stderr);return json.loads(p.stdout)
 with tempfile.TemporaryDirectory(prefix='hap-ssh-session-') as tmp:
- root=Path(tmp).resolve();sh=root/'server';ch=root/'client'
+ root=Path(tmp).resolve();sh=root/'server';ch=root/'client 中文 space %h'
  for h in [sh,ch]:h.mkdir(mode=0o700)
  se=dict(os.environ,HOME=str(sh));ce=dict(os.environ,HOME=str(ch))
  sshport=port();pairport=port();key=root/'hostkey'
@@ -28,15 +28,17 @@ with tempfile.TemporaryDirectory(prefix='hap-ssh-session-') as tmp:
   paired=run(['ssh','conn','--code-stdin','--save','test','--no-connect'],ce,first['code']+'\n');peer=paired['peerId']
   server.communicate(timeout=20);assert server.returncode==0
   state=ch/'.hap/ssh'
-  ssh=['ssh','-F','/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+str(state/('known-'+peer)),'-i',str(state/('key-'+peer)),'-p',str(sshport),getpass.getuser()+'@127.0.0.1']
+  ssh=['ssh','-F','/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile="'+str(state/('known-'+peer)).replace('%','%%')+'"','-o','IdentityFile="'+str(state/('key-'+peer)).replace('%','%%')+'"','-p',str(sshport),getpass.getuser()+'@127.0.0.1']
   data=os.urandom(16384)
   p=subprocess.run(ssh+['cat'],input=data,capture_output=True,timeout=20);assert p.returncode==0 and p.stdout==data,(p.returncode,p.stderr)
-  p=subprocess.run([binary,'ssh','conn','test'],input='exit\n',env=ce,text=True,capture_output=True,timeout=20);assert p.returncode==0,(p.stdout,p.stderr)
+  p=subprocess.run([binary,'ssh','conn','test'],input='exit\n',env=ce,text=True,errors="replace",capture_output=True,timeout=20);assert p.returncode==0,(p.stdout,p.stderr)
+  ended=subprocess.run([binary,'ssh','conn','test'],input='exit 7\n',env=ce,text=True,errors="replace",capture_output=True,timeout=20)
+  result=json.loads(ended.stdout);assert ended.returncode!=0 and result['sessionExitCode']==7 and result['sshAuthenticated'] is True,result
   known=state/('known-'+peer);saved=known.read_text()
   # A changed host key must fail, even though the peer name/address are unchanged.
   client_pub=subprocess.check_output(['ssh-keygen','-y','-f',str(state/('key-'+peer))],text=True).strip()
   known.write_text('['+'127.0.0.1'+']:'+str(sshport)+' '+client_pub+'\n')
-  denied=subprocess.run([binary,'ssh','conn','test'],input='exit\n',env=ce,text=True,capture_output=True,timeout=20);assert denied.returncode!=0
+  denied=subprocess.run([binary,'ssh','conn','test'],input='exit\n',env=ce,text=True,errors="replace",capture_output=True,timeout=20);assert denied.returncode!=0
   known.write_text(saved)
   run(['ssh','revoke',peer],se)
   p=subprocess.run(ssh+['true'],capture_output=True,timeout=20);assert p.returncode==255,p.returncode

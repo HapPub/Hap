@@ -24,6 +24,8 @@ HapCLI 不替代 `cjpm`、Gradle、Xcode、DevEco Studio、`hdc` 或包管理器
 
 查看[能力矩阵](docs/CAPABILITIES.md)，区分已实现、已验证主机与当前限制。宿主工具命令需要 Python 3.11+；SSH 配对还需要 OpenSSH 与 OpenSSL。
 
+本分支已修复 SSH 空格路径、失败结果返回成功退出码的问题；仓颉组件安装改为验证暂存目录后再发布。各平台验证范围见能力矩阵。
+
 ## 快速开始
 
 本说明对应**源码版本 0.3.0**。可下载的版本和主机资产以

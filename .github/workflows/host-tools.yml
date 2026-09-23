@@ -1,9 +1,9 @@
 name: Host tools
 on:
   push:
-    branches: [feat/installer-ssh-tools]
+    branches: [main, 'feat/**', 'fix/**']
   pull_request:
-    paths: ['src/host_tools*', 'tools/host/**', 'tests/host-tools.py', 'tests/ssh-session.py', '.github/workflows/host-tools.yml']
+    paths: ['src/**', 'tools/**', 'tests/**', 'scripts/**', 'cjpm.toml', '.github/workflows/host-tools.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -40,11 +40,14 @@ jobs:
           cjpm build
           cjpm test --timeout-each=30s --no-progress --no-color
           if [[ "$RUNNER_OS" == Windows ]]; then
+            python3 tests/host-contracts.py target/release/bin/main.exe
+            python3 tests/host-tools.py target/release/bin/main.exe
             target/release/bin/main.exe get ssh --plan
             target/release/bin/main.exe get ssh
             target/release/bin/main.exe get nsis --version 3.12 --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --plan
             target/release/bin/main.exe ssh doctor
           else
+            python3 tests/host-contracts.py target/release/bin/main
             python3 tests/host-tools.py target/release/bin/main
             if [[ "$RUNNER_OS" == macOS ]]; then python3 tests/ssh-session.py target/release/bin/main; fi
           fi
