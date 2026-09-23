@@ -18,7 +18,7 @@ performed. Unlisted host combinations are not verified by this matrix.
 | Hapup adaptive downloads | Automatic route probes, slow-transfer fallback and forced routes | 18 routing regressions and real downloads; not geographic coverage certification; older release scripts are unchanged |
 | `hap get cangjie --version sts` | Installs matching SDK + stdx and verifies before activation | Real macOS compile/run; automatic activation requires native macOS/Linux; foreign targets require `--no-activate` and suitable host tools |
 | `hap install cangjie*` | Component installation; LTS, STS and dynamic nightly resolution | Does not activate the shell; `cangjie` means SDK only here; cache checks completion markers, not every extracted file |
-| `hap get cangjie-sdk`, `hap get cangjie-stdx` | Legacy plan / recipe entrypoints | These commands do not directly install the components |
+| `hap get cangjie-sdk`, `hap get cangjie-stdx` | Install one component without activation | `--plan` makes no network requests or writes; explicit legacy recipe options retain their old plan-only behavior |
 | `hap get jdk --provider semeru` | Resolves and installs IBM Semeru releases | Native macOS/Linux adapter; real macOS package proof; other host coverage depends on available assets |
 | `hap get android` | Installs command-line tools, platforms and optional NDK/CMake | Native macOS/Linux adapter and fixture integration tests; real upstream end-to-end acceptance remains incomplete |
 | `hap get ohos` | Installs OpenHarmony SDK native/toolchains or full profile | Real macOS package/native-object proof; does not prove application signing or device execution |

@@ -47,7 +47,8 @@ separate receipt fields.
 `hap get cangjie` composes SDK and matching stdx installation, verifies native
 compilation/execution and activates a managed shell environment. The lower-level
 `hap install cangjie*` interface remains component-only and does not change shell
-selection. The older `get cangjie-sdk/stdx` commands remain planners.
+selection. The `get cangjie-sdk/stdx` commands share component installation; explicit
+legacy recipe options retain their plan-only behavior.
 
 `src/sdk_toolchain_get.cj` coordinates Semeru, Android, OpenHarmony and HarmonyOS
 installation; `sdk_toolchain_catalog.cj` resolves supported vendor assets, and

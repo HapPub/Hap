@@ -235,6 +235,7 @@ public class HapCangjiePackageInstallTest {
         rejectedAsset.sha256 = "0" * 64
         let rejected = installResolvedCangjiePackage(options, rejectedAsset)
         @Assert(rejected.ok, false)
+        @Assert(rejected.diagnostic, "")
         @Assert(rejected.status, "checksum-rejected")
 
         let asset = HapCangjiePackageInstallAsset()

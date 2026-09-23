@@ -450,10 +450,10 @@ public func runHapCli(commandLine: Array<String>): Int64 {
             return cangjieToolchainGetExitCode(output)
         }
         if (subject == "cangjie-stdx") {
-            return emitHapJson(renderCangjieStdxGetPlanJson(resolveCangjieStdxGetOptions(commandLine, 3)))
+            return emitHapJson(runCangjieComponentGet(commandLine))
         }
         if (subject == "cangjie-sdk") {
-            return emitHapJson(renderCangjieSdkGetPlanJson(resolveCangjieSdkGetOptions(commandLine, 3)))
+            return emitHapJson(runCangjieComponentGet(commandLine))
         }
         println(renderInspectCjpmErrorJson("unknown-get-subject", "unknown get subject: " + subject))
         return 2
@@ -737,8 +737,8 @@ public func renderHapCliHelp(): String {
     "  env apply --rc <path> --receipt <path>            Patch exact rc path after review, with backup and receipt\n" +
     "  doctor stdx --project <path> --target <target>    Diagnose stdx path shape without installing anything\n" +
     "  doctor runtime --project <path> --target <target> Diagnose Cangjie runtime path shape without installing anything\n" +
-    "  get cangjie-stdx --target=<target> --version=<v>  Route GitHub/GitCode and emit a checksum-gated stdx plan\n" +
-    "  get cangjie-sdk --target=<target> --version=<v>   Route GitHub/GitCode and emit an SDK install/repair plan\n" +
+    "  get cangjie-stdx --target=<target> --version=<v>  Install stdx; --plan previews, legacy recipe options retain planning\n" +
+    "  get cangjie-sdk --target=<target> --version=<v>   Install SDK without activation; --plan previews\n" +
     "       [--region auto|global|zh-cn]                 CLI > HAP_REGION > Hap TOML > locale/timezone > global\n" +
     "  fetch reviewed-recipe --recipe-output=<path>      Emit or write a reviewed bash fetch/deploy recipe without executing it\n" +
     "  handoff runtime --target=<target> --version=<v>   Emit a runtime-only handoff envelope for HapShell\n" +

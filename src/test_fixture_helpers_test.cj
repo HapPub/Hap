@@ -34,11 +34,13 @@ func prepareManifestDiscoveryFixtureForTest(): String {
 }
 
 func testTempPathForTest(name: String): String {
-    let root = match (getVariable("RUNNER_TEMP")) {
-        case Some(value) => if (value.size > 0) { value } else { "/tmp" }
-        case None => "/tmp"
+    for (nameOfVariable in ["TMPDIR", "TEMP", "TMP"]) {
+        match (getVariable(nameOfVariable)) {
+            case Some(value) => if (value.size > 0) { return trimTrailingSlash(value.replace("\\", "/")) + "/" + name }
+            case None => ()
+        }
     }
-    trimTrailingSlash(root.replace("\\", "/")) + "/" + name
+    "/tmp/" + name
 }
 
 func containsForTest(text: String, needle: String): Bool {

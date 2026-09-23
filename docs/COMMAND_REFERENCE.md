@@ -19,7 +19,7 @@ by the executable.
 | `ci ...` | Diagnose workflows and generate reviewed bootstrap, bridge, executor, and hosted-proof artifacts. |
 | `toolchain providers`, `toolchain doctor` | Inspect compatible provider families without switching SDK versions. |
 | `get cangjie --version <version>` | Install SDK + matching stdx and activate a verified native toolchain; `--plan` previews, `--no-activate` installs only. |
-| `get cangjie-stdx`, `get cangjie-sdk` | Emit reviewed acquisition/install plans. |
+| `get cangjie-stdx`, `get cangjie-sdk` | Install one component without activation; `--plan` previews. Explicit legacy recipe options remain plan-only. |
 | `fetch reviewed-recipe` | Write a checksum-gated fetch/deploy recipe without executing it inside HapCLI. |
 | `install cangjie|cangjie-sdk|cangjie-stdx[@version]` | Install checksum-gated official SDK/stdx packages into Hap private storage; `--plan` is read-only. |
 | `install doctor|replace-plan|restore-plan|receipt-readback` | Review replacement/restore inputs and read Hapup receipts. |
@@ -76,8 +76,14 @@ schema, including the website HTML fallback, is rejected. The exact selected
 release `manifest.v1.json` must then provide the target asset and SHA-256 before
 any route probe or archive download. `--plan` performs none of these requests.
 
-`hap get cangjie-sdk` and `hap get cangjie-stdx` resolve a transport and emit a
-non-executing plan. Region precedence is:
+`hap get cangjie-sdk --version sts` and `hap get cangjie-stdx --version sts`
+install the selected component through the same verified transaction as
+`hap install`. They do not activate a shell environment. Use `--plan` for a
+network-free, write-free preview; use `get cangjie` for a complete activated pair.
+
+For compatibility, `--legacy-plan` or old recipe options (`--provider-url`,
+`--sha256`, `--allow-unverified`, `--review-token`) select the non-executing
+legacy planner and print a migration hint. Its region precedence is:
 
 ```text
 --region > HAP_REGION > downloadRegion in Hap TOML > locale/timezone > global

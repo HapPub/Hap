@@ -10,8 +10,8 @@ exec((source/'common.py').read_text()+'\n'+(source/'ssh_pair.py').read_text(),ap
 with tempfile.TemporaryDirectory(prefix='hap-contracts-') as td:
     root=Path(td).resolve(); home=root/'home';home.mkdir(mode=0o700)
     env=dict(os.environ,HOME=str(home),USERPROFILE=str(home))
-    failures=[['env','apply'],['env','print'],['get','cangjie-sdk','--target','linux-amd64'],
-              ['get','cangjie-stdx'],['fetch','reviewed-recipe'],['graph','apply-normalize']]
+    failures=[['env','apply'],['env','print'],['get','cangjie-sdk','--target','linux-amd64','--legacy-plan'],
+              ['get','cangjie-stdx','--legacy-plan'],['fetch','reviewed-recipe'],['graph','apply-normalize']]
     for args in failures:
         p=subprocess.run([binary,*args],env=env,capture_output=True,text=True,timeout=15)
         result=json.loads(p.stdout)

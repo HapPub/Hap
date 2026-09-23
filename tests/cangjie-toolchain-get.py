@@ -57,6 +57,16 @@ with tempfile.TemporaryDirectory(prefix='hap-toolchain-get-') as td:
     cjpm = sdk / 'cangjie/tools/bin/cjpm'
     cjpm.write_text('#!/bin/sh\necho 1.1.3\n')
     cjpm.chmod(0o755)
+    # The ordinary component get entries execute the same installer without activation.
+    for subject in ('cangjie-sdk','cangjie-stdx'):
+        command=[binary,'get',subject,'--version','sts','--target',plan['sdk']['target'],'--plan']
+        probe=subprocess.run(command,env=env,text=True,capture_output=True)
+        result=json.loads(probe.stdout)
+        assert probe.returncode==0 and result['resolvedPackage']==subject and result['plan'],result
+    component=subprocess.run([binary,'get','cangjie-sdk','--version','sts','--target',plan['sdk']['target']],env=env,text=True,capture_output=True)
+    result=json.loads(component.stdout)
+    assert component.returncode==0 and result['cacheHit'] and result['status']=='verified-marker-cache-hit',result
+    assert not (home/'.hap/env.sh').exists(),'component get activated an environment'
     active = home / '.hap/env.sh'
     active.write_text('# previous selection\n')
     # SDK success nested inside a stdx failure must still exit nonzero.

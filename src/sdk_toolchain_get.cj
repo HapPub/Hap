@@ -141,15 +141,15 @@ func sdkValidatePrivateRoot(root: String): Unit {
         if (parent == ancestor || parent.size == 0) { throw Exception("cannot resolve install root") }
         ancestor = parent
     }
-    let real = canonicalize(ancestor).toString() + substringFrom(root, ancestor.size)
+    let real = canonicalize(ancestor).toString().replace("\\", "/") + substringFrom(root, ancestor.size)
     let home = cangjiePackageEnvironmentPath("HOME")
     if (home.size > 0 && exists(home)) {
-        let base = canonicalize(home).toString() + "/.hap"
+        let base = canonicalize(home).toString().replace("\\", "/") + "/.hap"
         if (real == base || startsWithText(real, base + "/")) { return }
     }
     for (temp in ["/private/tmp", "/tmp", cangjiePackageEnvironmentPath("TMPDIR"), cangjiePackageEnvironmentPath("TEMP"), cangjiePackageEnvironmentPath("TMP")]) {
         if (temp.size > 0 && exists(temp)) {
-            let base = trimTrailingSlash(canonicalize(temp).toString())
+            let base = trimTrailingSlash(canonicalize(temp).toString().replace("\\", "/"))
             if (real == base || startsWithText(real, base + "/")) { return }
         }
     }
