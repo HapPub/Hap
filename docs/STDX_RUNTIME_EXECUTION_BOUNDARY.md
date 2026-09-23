@@ -30,7 +30,7 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 
 - no universal SDK manager or official package-manager status
 - no network lookup or mutation in `--plan`
-- no installation through the older `get cangjie-sdk/stdx` planners, `doctor`, or
+- no installation through `--legacy-plan`, `doctor`, or
   `fetch reviewed-recipe`; an explicit `hap install cangjie*` request installs
   components, while `hap get cangjie` and the SDK/JDK commands install and may activate
   complete toolchains
@@ -41,11 +41,13 @@ HapCLI is package-management-adjacent glue, not a hidden package manager.
 Starting with 0.2.0, an explicit `hap get cangjie --version <version>` request
 installs both SDK and stdx, verifies a native compile/run, and changes the user's
 managed shell selection. This higher-level command owns activation; the separate
-`get cangjie-sdk/stdx` planners and lower-level package installs retain their
-existing behavior. `--plan` takes no network or filesystem action and
+`get cangjie-sdk/stdx` commands and lower-level package installs perform
+component transactions without activation. Explicit legacy recipe options retain
+their old planner behavior. `--plan` takes no network or filesystem action and
 `--no-activate` leaves shell defaults unchanged. See [installation](INSTALLATION.md).
 
 Starting with 0.3.0, `hap get jdk|semeru|android|ohos|openharmony|harmonyos` adds
 provider-specific SDK/JDK installation with independent environment selections.
-These commands execute only on native macOS/Linux; Windows/foreign targets are
-plan-only. See [SDK/JDK installation](SDK_TOOLCHAINS.md) for availability and checks.
+These commands execute on native macOS/Linux. Semeru JDK additionally supports
+native Windows x64 with Python 3.11+ and managed PowerShell activation; other
+Windows SDKs and foreign targets remain plan-only. See [SDK/JDK installation](SDK_TOOLCHAINS.md) for availability and checks.

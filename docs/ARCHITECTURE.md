@@ -58,7 +58,7 @@ checksums and tool verification must pass before activation; failure preserves
 the previous selection. `--plan` makes no network requests or writes.
 See [SDK/JDK installation](SDK_TOOLCHAINS.md) for host and catalog limits.
 
-### Installer engines, SSH and desktop helpers
+### Installer engines, Windows JDK, SSH and desktop helpers
 
 `src/host_tools.cj` invokes the reviewed Python sources under `tools/host`,
 embedded at build time by `scripts/embed-host-tools.py`. These commands require

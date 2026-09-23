@@ -166,8 +166,9 @@ remain non-interactive. Scripts and CI can use
 silently falls back. Probe timing is transport evidence only and never replaces
 the pinned SHA-256 authority.
 
-The two older `get` commands remain plan-only acquisition surfaces. Real
-nightly installs are now available through `install`, and `--plan` deliberately
+Ordinary `get cangjie-sdk/stdx` commands install one component without activation,
+including validated nightly versions. Use `--legacy-plan` for the older acquisition
+planner; explicit legacy recipe options also retain that behavior. `--plan` deliberately
 reports pending dynamic resolution without contacting the network. HapCLI treats
 `https://cli.hap.pub/manifests/cangjie-install-v1.json` as a schema-gated
 supplementary dictionary, then falls back to the live HapPub mirror index when
@@ -254,14 +255,14 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 
 | Surface | Status | Honest boundary |
 | --- | --- | --- |
-| SDK/JDK installation | Native macOS/Linux execution; Windows/foreign hosts plan-only | Provider availability below is separate from HapCLI binary availability. |
-| IBM Semeru JDK | GitHub Release installation; macOS ARM64 Java compile/run verified | Requires a matching Open Edition JDK asset; not universal Gradle compatibility. |
+| SDK/JDK installation | Native macOS/Linux; Semeru JDK also supports Windows x64; other Windows SDKs/foreign hosts plan-only | Provider availability below is separate from HapCLI binary availability. |
+| IBM Semeru JDK | GitHub Release installation; macOS ARM64 and Windows x64 Java compile/run verified | Requires a matching Open Edition JDK asset; not universal Gradle compatibility. |
 | Android SDK/NDK/CMake | macOS Intel/ARM and Linux x64 catalog; controlled integration verified | Real upstream download acceptance remains incomplete; vendor terms and compatible Java are required. |
 | OpenHarmony SDK | 6.0 catalog for macOS Intel/ARM and Linux x64; macOS ARM64 native/full verified | SDK 6.0.0.47 / API 20; target-object compilation does not prove device execution. |
 | HarmonyOS Command Line Tools | Built-in Linux x64 5.1.0.840 catalog; official archive/URL override | Current macOS live-package acceptance remains incomplete; other hosts/releases require official assets and SHA-256. |
 | Cangjie/cjpm on macOS arm64 | Source, tests, and tag release lane verified | Current Cangjie 1.1.3 static runtime objects require macOS 13.3 even when the linker target is lower. |
 | Cangjie/cjpm on Linux AMD64/ARM64 | Tag release lanes available | Each release is published only after the native runner builds, tests, and smoke-checks its binary. |
-| Windows AMD64 | Included in both toolchain-qualified release builds | Requires native tests and extracted ZIP smoke; SDK installation remains plan-only. |
+| Windows AMD64 | Included in both toolchain-qualified release builds | Requires native tests and extracted ZIP smoke; Semeru JDK installs natively; other SDK installation remains plan-only. |
 | macOS Intel | Nightly native build lane | No native SDK in the stable 1.0.5/1.1.3 catalog; matching nightly SDK required. |
 | OHOS ARM64/AMD64 | Nightly cross-build and link verification available | The artifacts are not runtime-smoked on an OHOS device and require a compatible target Cangjie runtime. |
 | Windows ARM64/x86 | Upstream gap recorded | The mirrored Cangjie release has no matching native host SDK, so HapCLI does not relabel another architecture as support. |

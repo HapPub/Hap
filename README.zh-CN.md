@@ -132,8 +132,8 @@ hap get cangjie-stdx --target linux-amd64 --version <nightly-tag> --region auto 
 `--route auto|mirror|ghfast|ghproxy|official`，强制线路不会静默回退。测速只证明
 本次传输状态，不替代固定 SHA-256 校验权威。
 
-两个旧 `get` 命令仍保留为只生成方案的获取入口；真实 nightly 安装现已由 `install`
-支持。`--plan` 会报告等待动态解析且完全不访问网络。HapCLI 将
+普通 `get cangjie-sdk/stdx` 命令执行单组件安装，支持通过校验的 nightly，且不激活环境。
+`--legacy-plan` 或显式旧 recipe 选项仍使用原来的只生成方案入口。`--plan` 会报告等待动态解析且完全不访问网络。HapCLI 将
 `https://cli.hap.pub/manifests/cangjie-install-v1.json` 作为经过 schema 校验的补充字典；
 字典缺失、过期，或返回官网 HTML 而非 JSON 时，会回退到 HapPub Mirror 的实时索引。
 最终版本对应的精确 `manifest.v1.json` 仍是资产与 SHA-256 权威。
@@ -195,14 +195,14 @@ hap cjpm graph ci-workflow-export --manifest ./cjpm.toml --workflow-output /tmp/
 
 | 能力面 | 状态 | 真实边界 |
 | --- | --- | --- |
-| SDK/JDK 安装 | 本机 macOS/Linux 执行；Windows/跨主机只提供计划 | 下列提供方范围与 HapCLI 二进制可用平台分别说明。 |
-| IBM Semeru JDK | 从 GitHub Release 安装；macOS ARM64 已验证 Java 编译运行 | 需要匹配的 Open Edition JDK 资产；不代表兼容所有 Gradle 项目。 |
+| SDK/JDK 安装 | 本机 macOS/Linux 执行；Semeru JDK 另支持 Windows x64，其他 Windows SDK/跨主机只提供计划 | 下列提供方范围与 HapCLI 二进制可用平台分别说明。 |
+| IBM Semeru JDK | 从 GitHub Release 安装；macOS ARM64 与 Windows x64 已验证 Java 编译运行 | 需要匹配的 Open Edition JDK 资产；不代表兼容所有 Gradle 项目。 |
 | Android SDK/NDK/CMake | 目录覆盖 macOS Intel/ARM、Linux x64；受控集成通过 | 真实上游下载验收尚未完成；需要接受提供方条款并使用兼容 Java。 |
 | OpenHarmony SDK | 6.0 目录覆盖 macOS Intel/ARM、Linux x64；macOS ARM64 native/full 已验证 | SDK 6.0.0.47 / API 20；目标对象编译不代表设备运行验收。 |
 | HarmonyOS Command Line Tools | 内置 Linux x64 5.1.0.840 目录；支持官方归档/URL | 当前 macOS 真包验收尚未完成；其他主机或版本需要官方资产和 SHA-256。 |
 | macOS arm64 仓颉/cjpm | 源码、测试和标签发布链已验证 | 当前仓颉 1.1.3 静态运行时对象要求 macOS 13.3，即使链接目标设置得更低也不能证明更老系统可运行。 |
 | Linux AMD64/ARM64 仓颉/cjpm | 已有标签发布链 | 每个发布必须由对应原生 Runner 完成构建、测试和二进制自检。 |
-| Windows AMD64 | 两条工具链发行均包含此构建目标 | 必须通过原生测试和 ZIP 解包启动验证；SDK 安装仍只提供计划。 |
+| Windows AMD64 | 两条工具链发行均包含此构建目标 | 必须通过原生测试和 ZIP 解包启动验证；Semeru JDK 可原生安装，其他 SDK 安装仍只提供计划。 |
 | macOS Intel | 保留 nightly 原生构建 | 1.0.5/1.1.3 稳定目录没有对应主机 SDK，需要匹配的 nightly SDK。 |
 | OHOS ARM64/AMD64 | nightly 交叉构建和链接验证可用 | 产物尚未在 OHOS 设备上执行运行时自检，并依赖兼容的目标端仓颉运行时。 |
 | Windows ARM64/x86 | 已记录上游缺口 | 当前镜像的仓颉发布没有匹配的原生宿主 SDK，因此 HapCLI 不会把其他架构改名后声称支持。 |

@@ -35,8 +35,7 @@ inside one atomically published environment file.
 Installation and activation currently execute on a **native macOS or Linux
 host**. Native Windows x64 also supports Semeru JDK ZIP installation (see below). Other Windows SDKs and foreign-host targets are plan-only. A successful plan is not
 an availability or installation claim. Missing upstream assets fail explicitly;
-HapCLI does not substitute another architecture. The macOS/Linux installer has no Python, pip or npm dependency
-is added to the installer: it uses the native HapCLI binary and the host's curl,
+HapCLI does not substitute another architecture. The macOS/Linux installer has no Python, pip or npm dependency: it uses the native HapCLI binary and the host's curl,
 tar, unzip, find, shell and SHA-256 utility.
 
 ## Validation coverage
@@ -145,12 +144,12 @@ macOS/Linux. Installation uses a private lock and staging directory, rejects
 archive links and path escapes, checks SHA-256, and compiles/runs a Java program
 before publication. Cache reuse checks the bound receipt and native tools.
 
-The tested Windows Semeru launcher cannot start from paths outside the active
-Windows ANSI encoding. Hap uses an existing compatible short path when Windows
-provides one and confirms it points to the same directory. Otherwise it returns
-`jdk-path-encoding-unsupported` before archive download or installation writes;
-choose an ASCII `--install-root` inside private temporary storage. Hap does not
-enable short names globally, change the code page, or create directory links.
+The tested Windows Semeru native library loader requires the real installation
+path to be representable in the active Windows ANSI encoding. Hap validates
+that path and returns `jdk-path-encoding-unsupported` before archive download or
+installation writes for incompatible roots; choose an ASCII `--install-root`
+inside private temporary storage. Short-name aliases do not remove this native
+library-loading restriction. System code-page and filesystem settings stay intact.
 
 ```powershell
 hap get jdk --provider semeru --version 17

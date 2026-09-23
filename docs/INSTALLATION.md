@@ -224,7 +224,9 @@ hap get cangjie --version sts --route auto
 Projects that hardcode the old `linux_x86_64_llvm` stdx layout still need their
 project configuration corrected. The installer supplies the actual `cjnative`
 paths; it does not disguise a compiler ABI or rewrite a project's requirements.
-The old `hap get cangjie-sdk` and `hap get cangjie-stdx` commands remain planners;
-`hap install cangjie*` remains the component-level installation interface.
+Ordinary `hap get cangjie-sdk` and `hap get cangjie-stdx` requests install one
+component without activation, using the same transaction as `hap install cangjie*`.
+Use `--plan` for a read-only preview. `--legacy-plan` and explicit older recipe
+options preserve the previous acquisition planner with a migration hint.
 
 For IBM Semeru JDK, Android SDK/NDK, OpenHarmony SDK and HarmonyOS Command Line Tools, see [SDK and JDK installation](SDK_TOOLCHAINS.md). These `hap get` commands execute installation and support a read-only `--plan`.

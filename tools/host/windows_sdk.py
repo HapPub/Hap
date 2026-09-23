@@ -1,28 +1,11 @@
 """Windows JDK adapter using the shared private-root, lock and archive contracts."""
 def windows_java_path(path):
-    # The native Semeru launcher uses the Windows ANSI path representation.
-    # Reuse an existing filesystem alias only after proving it is the same object.
+    # Native library loading canonicalizes short names back to the long path.
+    # Check that real path before downloading instead of publishing a broken JDK.
     try:
-        str(path).encode('mbcs', 'strict')
+        str(path.resolve()).encode('mbcs', 'strict')
         return path
     except UnicodeEncodeError:
-        import ctypes
-        from ctypes import wintypes
-        ancestor=path
-        while not ancestor.exists():ancestor=ancestor.parent
-        short=ctypes.WinDLL('kernel32',use_last_error=True).GetShortPathNameW
-        short.argtypes=[wintypes.LPCWSTR,wintypes.LPWSTR,wintypes.DWORD]
-        short.restype=wintypes.DWORD
-        size=short(str(ancestor),None,0)
-        if size:
-            buffer=ctypes.create_unicode_buffer(size)
-            written=short(str(ancestor),buffer,size)
-            if 0 < written < size and os.path.samefile(ancestor,buffer.value):
-                candidate=Path(buffer.value)/path.relative_to(ancestor)
-                try:
-                    str(candidate).encode('mbcs','strict')
-                    return candidate
-                except UnicodeEncodeError:pass
         error=HostCommandError('java.exe',None,'jdk-path-encoding-unsupported')
         error.stage='jdk-path-preflight'
         raise error from None
