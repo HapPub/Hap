@@ -19,7 +19,7 @@ performed. Unlisted host combinations are not verified by this matrix.
 | `hap get cangjie --version sts` | Installs matching SDK + stdx and verifies before activation | Real macOS compile/run; automatic activation requires native macOS/Linux; foreign targets require `--no-activate` and suitable host tools |
 | `hap install cangjie*` | Component installation; LTS, STS and dynamic nightly resolution | Does not activate the shell; `cangjie` means SDK only here; cache checks completion markers, not every extracted file |
 | `hap get cangjie-sdk`, `hap get cangjie-stdx` | Install one component without activation | `--plan` makes no network requests or writes; explicit legacy recipe options retain their old plan-only behavior |
-| `hap get jdk --provider semeru` | Resolves and installs IBM Semeru releases | Native macOS/Linux and Windows x64 adapters; real macOS package proof, Windows real-package CI pending; other hosts depend on available assets |
+| `hap get jdk --provider semeru` | Resolves and installs IBM Semeru releases | Native macOS/Linux and Windows x64 adapters; real macOS package proof, Windows JDK 17 official ZIP compile/run and cache replay verified in hosted CI; other hosts depend on available assets |
 | `hap get android` | Installs command-line tools, platforms and optional NDK/CMake | Native macOS/Linux adapter and fixture integration tests; real upstream end-to-end acceptance remains incomplete |
 | `hap get ohos` | Installs OpenHarmony SDK native/toolchains or full profile | Real macOS package/native-object proof; does not prove application signing or device execution |
 | `hap get harmonyos` | Installs CLT and manages its SDK/Node/JDK environment | Built-in catalog is Linux x64 5.1.0.840; other versions need an official archive/URL and SHA-256; real current-macOS package acceptance is incomplete |
@@ -75,7 +75,7 @@ not accepted by the current username validator.
   tests, with Windows coverage pending the updated workflow result. Real SSH
   sessions remain macOS-only; interactive desktop acceptance remains separate.
 - The Cangjie suite has 233 passing cases on macOS after the test-file split. The separate host-tool
-  suite has 28 public-command checks on macOS/Linux. These are different suites.
+  suite has 30 public-command checks on macOS/Linux. These are different suites.
 - Successful compilation is not proof of host installation, target execution,
   signing, interactive desktop visibility or user acceptance.
 - Legacy JSON handlers now map top-level `ok=false` to a nonzero exit code;

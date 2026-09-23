@@ -25,7 +25,7 @@ def require(condition, message):
 
 
 def emit(**data):
-    print(json.dumps(data, ensure_ascii=False), flush=True)
+    print(json.dumps(data, ensure_ascii=True), flush=True)
 
 
 def digest(path):

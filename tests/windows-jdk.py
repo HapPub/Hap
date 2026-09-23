@@ -5,7 +5,7 @@ from pathlib import Path
 assert os.name=='nt','Windows-only acceptance'
 binary=str(Path(sys.argv[1]).resolve())
 with tempfile.TemporaryDirectory(prefix='hap-windows-jdk-') as td:
-    home=Path(td)/'user space';home.mkdir()
+    home=Path(td)/'user 中文 space';home.mkdir()
     env=dict(os.environ,HOME=str(home),USERPROFILE=str(home))
     def install(version):
         p=subprocess.run([binary,'get','jdk','--provider','semeru','--version',version,'--no-activate'],
