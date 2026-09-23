@@ -23,14 +23,14 @@ performed. Unlisted host combinations are not verified by this matrix.
 | `hap get android` | Installs command-line tools, platforms and optional NDK/CMake | Native macOS/Linux adapter and fixture integration tests; real upstream end-to-end acceptance remains incomplete |
 | `hap get ohos` | Installs OpenHarmony SDK native/toolchains or full profile | Real macOS package/native-object proof; does not prove application signing or device execution |
 | `hap get harmonyos` | Installs CLT and manages its SDK/Node/JDK environment | Built-in catalog is Linux x64 5.1.0.840; other versions need an official archive/URL and SHA-256; real current-macOS package acceptance is incomplete |
-| SDK/JDK on Windows | Semeru JDK installs natively on x64; SDK plans exist | Windows JDK requires Python 3.11+ and uses a managed PowerShell script. Android/OHOS/HarmonyOS execution remains unsupported |
+| SDK/JDK on Windows | Semeru JDK installs natively on x64; SDK plans exist | Windows JDK requires Python 3.11+, an ANSI-compatible real install path and a managed PowerShell script. Android/OHOS/HarmonyOS execution remains unsupported |
 | `hap installer inspect` | Discovers unmanaged NSIS/WiX; verifies explicitly selected bundles | Unmanaged discovery does not execute the detected compiler |
 | `hap get nsis` | Installs an explicitly supplied, pinned engine pack into private storage | Real macOS ARM64 NSIS 3.12 pack → consumer → install/portable EXE compilation; Windows EXE execution is not verified |
 | `hap get wix` | Separate verified-pack installation contract | Native execution requires Windows; real MSI compilation/installation is not verified |
 
 Engine packs require an explicit archive or HTTPS URL plus SHA-256; automatic
 upstream engine discovery is not implemented. Their complete inventory is checked
-on every cache reuse. Ordinary NSIS hosting does not establish Honor support.
+on every cache reuse. `--offline --archive` supports first-use local import without a URL download. Ordinary NSIS hosting does not establish Honor support.
 See [SDK/JDK installation](SDK_TOOLCHAINS.md), [host tools](HOST_TOOLS.md) and
 [installation](INSTALLATION.md).
 
@@ -55,8 +55,8 @@ See [SDK/JDK installation](SDK_TOOLCHAINS.md), [host tools](HOST_TOOLS.md) and
 | --- | --- | --- |
 | `hap get ssh` client | Reuses a healthy installed client | System client reuse verified in hosted CI; optional-component install path exists |
 | `hap get ssh --server` | Requires native service-manager setup outside this adapter | Fresh system-component setup and healthy-service reuse implemented; clean-machine installation/rollback acceptance incomplete |
-| `hap ssh --pair` / `conn` | Real TLS enrollment on macOS/Linux; real SSH session, reconnect, transfer and revoke rejection on isolated macOS loopback | Code exists; two-host Windows pairing/authentication not yet verified |
-| `peers`, `revoke`, `forget` | Host key removal tested; `forget` only removes a local alias | ACL adapter implemented; real target acceptance incomplete |
+| `hap ssh --pair` / `conn` | Real TLS enrollment on macOS/Linux; real SSH session, reconnect, transfer and revoke rejection on isolated macOS loopback | Isolated native TLS enrollment and key removal verified in hosted CI; two-host Windows SSH authentication remains unverified |
+| `peers`, `revoke`, `forget` | Host key removal tested; `forget` only removes a local alias | Isolated native ACL/key-removal checks pass; real target acceptance incomplete |
 | `ssh doctor` | Dependency/version diagnostics | Dependency/version and service diagnostics; does not prove login |
 | Desktop task helper | Not implemented for these hosts | Scheduled-task helper and syntax check; visible GUI, input and cleanup acceptance incomplete |
 | Broken-service replacement / temporary pairing firewall management | Not implemented | Not implemented; requires an explicit maintenance workflow |
@@ -72,10 +72,10 @@ not accepted by the current username validator.
 
 - The host-tools workflow builds/tests on Windows x64, Linux x64 and macOS ARM64.
   All native jobs now run command contracts and isolated installer/TLS enrollment
-  tests, with Windows coverage pending the updated workflow result. Real SSH
+  tests; Windows additionally checks an official Semeru archive and path diagnostics. Real SSH
   sessions remain macOS-only; interactive desktop acceptance remains separate.
-- The Cangjie suite has 233 passing cases on macOS after the test-file split. The separate host-tool
-  suite has 30 public-command checks on macOS/Linux. These are different suites.
+- The Cangjie suite has 233 passing cases on macOS with 1.0.5 and 1.1.3 after the test-file split; the Windows 1.1.3 suite has 212 cases. The separate host-tool
+  suite has 30 public-command checks on macOS, Linux and Windows. These are different suites.
 - Successful compilation is not proof of host installation, target execution,
   signing, interactive desktop visibility or user acceptance.
 - Legacy JSON handlers now map top-level `ok=false` to a nonzero exit code;
