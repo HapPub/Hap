@@ -14,6 +14,12 @@ def windows_jdk_install(raw):
     requested_major = o['requestedVersion'].removeprefix('jdk-').split('.')[0].split('+')[0]
     require(requested_major in ('11','17','21','25'), 'unsupported Semeru major')
 
+    def java_command(argv, stage, **kwargs):
+        try:return command(argv, **kwargs)
+        except HostCommandError as error:
+            error.stage=stage
+            raise
+
     def verify(payload):
         compilers=list(payload.rglob('javac.exe'))
         require(len(compilers)==1,'JDK must contain exactly one javac.exe')
@@ -23,12 +29,12 @@ def windows_jdk_install(raw):
         require('IBM' in metadata or 'Semeru' in metadata,'archive does not identify IBM Semeru')
         versions=re.findall(r'^JAVA_VERSION="([^"]+)"$',metadata,re.M)
         require(len(versions)==1 and versions[0].split('.')[0]==requested_major,'JDK version mismatch')
-        command([home/'bin/java.exe','-version'])
+        java_command([home/'bin/java.exe','-version'], 'jdk-version')
         with tempfile.TemporaryDirectory(prefix='.java-smoke-',dir=payload) as smoke:
             smoke=Path(smoke)
             (smoke/'HapSdkSmoke.java').write_text('public class HapSdkSmoke { public static void main(String[] args) { System.out.print("hap-sdk-ok"); } }',encoding='utf-8')
-            command([compilers[0],'-d',smoke,smoke/'HapSdkSmoke.java'],timeout=60)
-            require(command([home/'bin/java.exe','-cp',smoke,'HapSdkSmoke'],timeout=30)=='hap-sdk-ok','JDK compile/run failed')
+            java_command([compilers[0],'-d',smoke,smoke/'HapSdkSmoke.java'], 'jdk-compile', timeout=60)
+            require(java_command([home/'bin/java.exe','-cp',smoke,'HapSdkSmoke'], 'jdk-run', timeout=30)=='hap-sdk-ok','JDK compile/run failed')
         return home,versions[0]
 
     with lock(root,'.jdk-install-lock'):

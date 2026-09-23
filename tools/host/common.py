@@ -49,7 +49,7 @@ class HostCommandError(ValueError):
             'selected-interface-is-not-private': 'Select an interface on an existing private network.',
             'needs-restart': 'Restart the host when convenient, then retry.',
             'command-timeout': 'Inspect tool health and connectivity before retrying.',
-        }.get(status, 'Run hap ssh doctor and inspect the selected tool locally.')
+        }.get(status, 'Inspect the selected tool and its local prerequisites before retrying.')
         super().__init__(self.program + ' failed (' + status + ', exit ' + str(code) + ')')
 
 
