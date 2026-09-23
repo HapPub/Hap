@@ -15,6 +15,24 @@ with tempfile.TemporaryDirectory(prefix='hap-windows-jdk-') as td:
             assert p.returncode!=0 and result['stage']=='jdk-path-preflight' and result['nextAction']
             assert not (home/'.hap').exists(), 'rejected path wrote installation files'
             return None
+        if p.returncode and result.get('stage')=='jdk-version':
+            # Controlled native-launcher diagnostic: fixed public archive, no Java
+            # option environment, and no credentials in the version-only command.
+            import hashlib, urllib.request, zipfile
+            archive=Path(td)/'diagnostic.zip'
+            urllib.request.urlretrieve('https://github.com/ibmruntimes/semeru17-binaries/releases/download/jdk-17.0.20.10/ibm-semeru-open-jdk_x64_windows_17.0.20.10.zip',archive)
+            assert hashlib.sha256(archive.read_bytes()).hexdigest()=='6af6f222e11134032ec469d00b9f052b76abc28029c6c319bc86582c0f33ff2e'
+            diagnostic=home/'diagnostic'
+            with zipfile.ZipFile(archive) as z:z.extractall(diagnostic)
+            java=next(diagnostic.rglob('bin/java.exe'))
+            clean=dict(env)
+            for key in ('JAVA_TOOL_OPTIONS','_JAVA_OPTIONS','JDK_JAVA_OPTIONS'):clean.pop(key,None)
+            api={'__name__':'native_jdk_diagnostic'}
+            source=Path(__file__).resolve().parents[1]/'tools/host'
+            exec((source/'common.py').read_text()+'\n'+(source/'windows_sdk.py').read_text(),api)
+            for label,program in [('long',java),('short',api['windows_java_path'](java))]:
+                probe=subprocess.run([str(program),'-version'],env=clean,capture_output=True,timeout=20)
+                print(json.dumps({'jdkDiagnostic':label,'path':str(program),'exit':probe.returncode,'stdout':probe.stdout.decode('utf-8','replace'),'stderr':probe.stderr.decode('utf-8','replace')}),flush=True)
         assert p.returncode==0 and result['ok'],(p.returncode,result,p.stderr)
         assert result['nativeToolsVerified'] and result['verificationLevel']=='native-probe'
         assert result['target']=='windows-amd64' and not result['activated'] and not result['shellStartupChanged']
