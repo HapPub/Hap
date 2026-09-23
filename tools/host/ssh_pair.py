@@ -13,10 +13,11 @@ import threading
 
 
 def ssh_tool(name):
-    path = shutil.which(name)
-    if not path and os.name == 'nt':
+    path = None
+    if os.name == 'nt':
         candidate=Path(os.environ.get('WINDIR','C:/Windows'))/'System32'/'OpenSSH'/(name+'.exe')
         if candidate.is_file(): path=str(candidate)
+    if not path: path=shutil.which(name)
     require(path, 'missing prerequisite: '+name)
     return path
 
@@ -229,7 +230,7 @@ def ssh_argv(root, peer):
     require(type(data['port']) is int and 1<=data['port']<=65535,'invalid saved port')
     key=safe_root(root/('key-'+peer));known=safe_root(root/('known-'+peer))
     require(key.is_file() and known.is_file(),'peer key or host identity missing')
-    return [ssh_tool('ssh'),'-F','NUL' if os.name=='nt' else '/dev/null','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+ssh_config_path(known),'-o','GlobalKnownHostsFile='+('NUL' if os.name=='nt' else '/dev/null'),'-o','ForwardAgent=no','-o','ForwardX11=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=10','-o','IdentityFile='+ssh_config_path(key),'-p',str(data['port']),data['user']+'@'+data['ip']]
+    return [ssh_tool('ssh'),'-F','none','-o','BatchMode=yes','-o','IdentitiesOnly=yes','-o','IdentityAgent=none','-o','StrictHostKeyChecking=yes','-o','UserKnownHostsFile='+ssh_config_path(known),'-o','GlobalKnownHostsFile=none','-o','ForwardAgent=no','-o','ForwardX11=no','-o','ClearAllForwardings=yes','-o','ConnectTimeout=10','-o','IdentityFile='+ssh_config_path(key),'-p',str(data['port']),data['user']+'@'+data['ip']]
 
 
 def connect(o):

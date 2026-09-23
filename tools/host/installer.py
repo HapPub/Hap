@@ -49,6 +49,8 @@ def validate_engine(root, engine, version='', native=True):
     else:
         require(os.name == 'nt', 'WiX native execution requires Windows')
         require(any(n.upper().startswith(('LICENSE','COPYING')) for n in files), 'WiX license missing')
+    declared = m.get('targetArchitectures', [])
+    require(isinstance(declared, list) and all(isinstance(x, str) and re.fullmatch('[a-z0-9_-]{1,48}', x) for x in declared) and len(set(declared)) == len(declared), 'invalid declared target list')
     observed = ''
     if native:
         env=dict(os.environ)
@@ -58,7 +60,7 @@ def validate_engine(root, engine, version='', native=True):
                            [str(root / entry), '-NOCONFIG', '-VERSION'] if engine == 'nsis' else [str(root / entry), '--version'], env=env)
         require(re.search(r'(?<![\d.])v?' + re.escape(m['version']) + r'(?![\d.])', observed), 'compiler reported different version')
     return {'schema':'happub-installer-receipt-v1', 'ok':True, 'engine':engine, 'version':m['version'],
-            'host':m['host'], 'targetArchitectures':[], 'declaredTargets':m.get('targetArchitectures', []), 'verifiedTargets':[], 'verificationLevel':'inventory+native-probe' if native else 'inventory', 'bundleRoot':str(root), 'entry':str(root / entry),
+            'host':m['host'], 'targetArchitectures':[], 'declaredTargets':declared, 'verifiedTargets':[], 'verificationLevel':'inventory+native-probe' if native else 'inventory', 'bundleRoot':str(root), 'entry':str(root / entry),
             'manifestSha256':digest(root / 'engine.json'), 'inventoryVerified':True, 'nativeToolsVerified':native,
             'observedVersion':observed, 'honorVerified':False, 'windowsExecutionVerified':False}
 
@@ -130,7 +132,7 @@ def installer_main(args):
             old=read_json(final/'receipt.json'); require(old.get('archiveSha256')==o.sha256,'receipt archive mismatch')
             r.update(status='verified-cache-hit',archiveSha256=o.sha256,cacheHit=True,receipt=str(final/'receipt.json'))
             return r
-        require(not o.offline, 'offline-cache-miss')
+        require(not o.offline or o.archive, 'offline-cache-miss: supply a local --archive and its --sha256 for first import')
         require(o.archive or o.url, 'provide --archive or --url for this fixed, reviewed engine pack')
         stage=Path(tempfile.mkdtemp(prefix='.stage-',dir=root))
         try:

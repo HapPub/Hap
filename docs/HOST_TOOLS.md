@@ -14,6 +14,7 @@ hap installer inspect --engine nsis
 hap installer inspect --engine nsis --bundle /trusted/canghui-package
 hap get nsis --version 3.12 --archive /trusted/engine.tar.gz --sha256 <sha256>
 hap get nsis --version 3.12 --url https://publisher.example/engine.tar.gz --sha256 <sha256>
+hap get nsis --version 3.12 --archive /trusted/engine.tar.gz --sha256 <sha256> --offline
 hap get nsis --version 3.12 --sha256 <sha256> --offline
 hap get wix --version 6.0.2 --archive /trusted/wix-pack.zip --sha256 <sha256> --plan
 ```
@@ -32,7 +33,7 @@ before invoking its fixed version command. No global PATH or tool is changed.
 Installation verifies the archive, rejects links, reparse points, path escapes,
 case collisions and special files, and enforces 10000 entries/1 GiB limits. It
 stages privately, checks the native compiler, then publishes atomically. Cached
-installs are fully re-hashed. A failed invocation preserves existing installs.
+installs are fully re-hashed. Offline mode imports a local archive on first use or reuses a verified cache; it never downloads from a URL. A failed invocation preserves existing installs.
 
 NSIS uses `chui.installer-engine.v1`: `version`, `host` and `files` (every relative
 regular-file path except `engine.json`, mapped to lowercase SHA-256). Host names

@@ -30,6 +30,7 @@ jobs:
             https://github.com/HapPub/CangjieSDK-Mirror/releases/download/1.1.3/manifest.v1.json \
             '${{ matrix.sdk }}' "$RUNNER_TEMP/cangjie" "$RUNNER_TEMP/cangjie-env.sh" "$RUNNER_TEMP/sdk.json"
       - name: Build and verify command entrypoints
+        id: build
         shell: bash
         run: |
           set +u
@@ -46,12 +47,19 @@ jobs:
             target/release/bin/main.exe get ssh
             target/release/bin/main.exe get nsis --version 3.12 --sha256 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa --plan
             target/release/bin/main.exe ssh doctor
-            python3 tests/windows-jdk.py target/release/bin/main.exe
           else
             python3 tests/host-contracts.py target/release/bin/main
             python3 tests/host-tools.py target/release/bin/main
             if [[ "$RUNNER_OS" == macOS ]]; then python3 tests/ssh-session.py target/release/bin/main; fi
           fi
+      - name: Verify native Windows Semeru installation
+        if: runner.os == 'Windows' && !cancelled()
+        shell: bash
+        run: |
+          set +u
+          source "$RUNNER_TEMP/cangjie-env.sh"
+          set -u
+          python3 tests/windows-jdk.py target/release/bin/main.exe
       - name: Validate Windows desktop helper syntax
         if: runner.os == 'Windows'
         shell: pwsh

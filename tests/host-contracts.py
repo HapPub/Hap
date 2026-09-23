@@ -50,8 +50,8 @@ with tempfile.TemporaryDirectory(prefix='hap-contracts-') as td:
         assert api['safe_root']('/tmp/hap-test')==Path('/private/tmp/hap-test')
     for part in (['space path','中文','percent%h'] if os.name=='nt' else ['space path','中文','percent%h','quote"path','back\\slash']):
         path=root/part/'known'
-        parsed=subprocess.run([api['ssh_tool']('ssh'),'-G','-F','NUL' if os.name=='nt' else '/dev/null',
-            '-o','UserKnownHostsFile='+api['ssh_config_path'](path),'127.0.0.1'],capture_output=True,text=True,timeout=10)
+        parsed=subprocess.run([api['ssh_tool']('ssh'),'-G','-F','none',
+            '-o','UserKnownHostsFile='+api['ssh_config_path'](path),'127.0.0.1'],capture_output=True,text=True,encoding='utf-8',timeout=10)
         assert parsed.returncode==0,(part,parsed.stderr)
         assert ('userknownhostsfile '+str(path)) in parsed.stdout,parsed.stdout
 print('host contracts passed: failure exits, read-only plans, safe diagnostics, timeout, lock ownership and SSH path parsing')

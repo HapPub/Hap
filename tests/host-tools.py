@@ -61,7 +61,10 @@ with tempfile.TemporaryDirectory(prefix='hap-host-tests-') as td:
         return path,hashlib.sha256(path.read_bytes()).hexdigest()
     seal();archive_path,sha=archive();install=root/'中文 空格'/'engines'
     args=['get','nsis','--version','3.12','--archive',str(archive_path),'--sha256',sha,'--install-root',str(install)]
-    r=call(args,env);assert r['inventoryVerified'] and not r['cacheHit']
+    # First import remains network-free in offline mode; later calls use the cache.
+    r=call(args+['--offline'],env);assert r['inventoryVerified'] and not r['cacheHit']
+    call(['get','nsis','--version','3.12','--sha256','f'*64,'--install-root',str(install),'--offline'],env,False)
+    call(['get','nsis','--version','3.12','--url','https://127.0.0.1:1/never-download','--sha256','e'*64,'--install-root',str(install),'--offline'],env,False)
     assert r['verifiedTargets']==[] and r['declaredTargets']==[] and r['verificationLevel']=='inventory+native-probe'
     r2=call(['get','nsis','--version','3.12','--sha256',sha,'--install-root',str(install),'--offline'],env);assert r2['cacheHit']
     call(['installer','inspect','--engine','nsis','--bundle',r['bundleRoot']],env)
