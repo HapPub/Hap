@@ -1,4 +1,33 @@
 """Windows JDK adapter using the shared private-root, lock and archive contracts."""
+def windows_java_path(path):
+    # The native Semeru launcher uses the Windows ANSI path representation.
+    # Reuse an existing filesystem alias only after proving it is the same object.
+    try:
+        str(path).encode('mbcs', 'strict')
+        return path
+    except UnicodeEncodeError:
+        import ctypes
+        from ctypes import wintypes
+        ancestor=path
+        while not ancestor.exists():ancestor=ancestor.parent
+        short=ctypes.WinDLL('kernel32',use_last_error=True).GetShortPathNameW
+        short.argtypes=[wintypes.LPCWSTR,wintypes.LPWSTR,wintypes.DWORD]
+        short.restype=wintypes.DWORD
+        size=short(str(ancestor),None,0)
+        if size:
+            buffer=ctypes.create_unicode_buffer(size)
+            written=short(str(ancestor),buffer,size)
+            if 0 < written < size and os.path.samefile(ancestor,buffer.value):
+                candidate=Path(buffer.value)/path.relative_to(ancestor)
+                try:
+                    str(candidate).encode('mbcs','strict')
+                    return candidate
+                except UnicodeEncodeError:pass
+        error=HostCommandError('java.exe',None,'jdk-path-encoding-unsupported')
+        error.stage='jdk-path-preflight'
+        raise error from None
+
+
 def windows_jdk_install(raw):
     require(os.name == 'nt', 'Windows JDK adapter requires a Windows host')
     o = json.loads(raw)
@@ -9,6 +38,7 @@ def windows_jdk_install(raw):
     root = safe_root(o['root'])
     bases = (safe_root(Path.home()/'.hap'), safe_root(tempfile.gettempdir()))
     require(any(root != base and base in root.parents for base in bases), 'JDK root must stay within private HOME/.hap or temporary storage')
+    windows_java_path(root)
     root = private_root(root)
     final = safe_root(root/'jdk'/o['version']/o['target']/('full-'+o['sha256'][:12]))
     requested_major = o['requestedVersion'].removeprefix('jdk-').split('.')[0].split('+')[0]
@@ -29,11 +59,13 @@ def windows_jdk_install(raw):
         require('IBM' in metadata or 'Semeru' in metadata,'archive does not identify IBM Semeru')
         versions=re.findall(r'^JAVA_VERSION="([^"]+)"$',metadata,re.M)
         require(len(versions)==1 and versions[0].split('.')[0]==requested_major,'JDK version mismatch')
+        home=windows_java_path(home)
         java_command([home/'bin/java.exe','-version'], 'jdk-version')
         with tempfile.TemporaryDirectory(prefix='.java-smoke-',dir=payload) as smoke:
             smoke=Path(smoke)
             (smoke/'HapSdkSmoke.java').write_text('public class HapSdkSmoke { public static void main(String[] args) { System.out.print("hap-sdk-ok"); } }',encoding='utf-8')
-            java_command([compilers[0],'-d',smoke,smoke/'HapSdkSmoke.java'], 'jdk-compile', timeout=60)
+            smoke=windows_java_path(smoke)
+            java_command([home/'bin/javac.exe','-d',smoke,smoke/'HapSdkSmoke.java'], 'jdk-compile', timeout=60)
             require(java_command([home/'bin/java.exe','-cp',smoke,'HapSdkSmoke'], 'jdk-run', timeout=30)=='hap-sdk-ok','JDK compile/run failed')
         return home,versions[0]
 

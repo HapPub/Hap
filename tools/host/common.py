@@ -48,6 +48,7 @@ class HostCommandError(ValueError):
             'port-in-use': 'Select an unused port or inspect the existing listener.',
             'selected-interface-is-not-private': 'Select an interface on an existing private network.',
             'needs-restart': 'Restart the host when convenient, then retry.',
+            'jdk-path-encoding-unsupported': 'Choose an ASCII --install-root inside private temporary storage; the current Semeru launcher cannot use this path and no compatible short name exists.',
             'command-timeout': 'Inspect tool health and connectivity before retrying.',
         }.get(status, 'Inspect the selected tool and its local prerequisites before retrying.')
         super().__init__(self.program + ' failed (' + status + ', exit ' + str(code) + ')')

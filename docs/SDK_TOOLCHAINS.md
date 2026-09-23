@@ -145,6 +145,13 @@ macOS/Linux. Installation uses a private lock and staging directory, rejects
 archive links and path escapes, checks SHA-256, and compiles/runs a Java program
 before publication. Cache reuse checks the bound receipt and native tools.
 
+The tested Windows Semeru launcher cannot start from paths outside the active
+Windows ANSI encoding. Hap uses an existing compatible short path when Windows
+provides one and confirms it points to the same directory. Otherwise it returns
+`jdk-path-encoding-unsupported` before archive download or installation writes;
+choose an ASCII `--install-root` inside private temporary storage. Hap does not
+enable short names globally, change the code page, or create directory links.
+
 ```powershell
 hap get jdk --provider semeru --version 17
 # Or install without changing the managed selection:
